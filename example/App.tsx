@@ -1,73 +1,122 @@
-import { useEvent } from 'expo';
-import BugsplatExpo, { BugsplatExpoView } from 'bugsplat-expo';
-import { Button, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { useState } from 'react';
+import { init, post, setUser, setAttribute, crash } from 'bugsplat-expo';
+import { Button, SafeAreaView, ScrollView, Text, View, StyleSheet, TextInput } from 'react-native';
+
+const DATABASE = 'your-database';
+const APP_NAME = 'bugsplat-expo-example';
+const APP_VERSION = '1.0.0';
 
 export default function App() {
-  const onChangePayload = useEvent(BugsplatExpo, 'onChange');
+  const [status, setStatus] = useState('Not initialized');
+  const [database, setDatabase] = useState(DATABASE);
+
+  const handleInit = async () => {
+    try {
+      await init(database, APP_NAME, APP_VERSION, {
+        userName: 'Test User',
+        userEmail: 'test@example.com',
+      });
+      setStatus('Initialized!');
+    } catch (e) {
+      setStatus(`Init failed: ${e}`);
+    }
+  };
+
+  const handlePost = async () => {
+    try {
+      const result = await post(new Error('Test error from bugsplat-expo example'));
+      setStatus(result.success ? 'Error posted!' : `Post failed: ${result.error}`);
+    } catch (e) {
+      setStatus(`Post failed: ${e}`);
+    }
+  };
+
+  const handleSetUser = () => {
+    setUser('Example User', 'user@example.com');
+    setStatus('User set!');
+  };
+
+  const handleSetAttribute = () => {
+    setAttribute('environment', 'development');
+    setStatus('Attribute set!');
+  };
+
+  const handleCrash = () => {
+    crash();
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.container}>
-        <Text style={styles.header}>Module API Example</Text>
-        <Group name="Constants">
-          <Text>{BugsplatExpo.PI}</Text>
-        </Group>
-        <Group name="Functions">
-          <Text>{BugsplatExpo.hello()}</Text>
-        </Group>
-        <Group name="Async functions">
-          <Button
-            title="Set value"
-            onPress={async () => {
-              await BugsplatExpo.setValueAsync('Hello from JS!');
-            }}
+        <Text style={styles.header}>BugSplat Expo Example</Text>
+
+        <View style={styles.group}>
+          <Text style={styles.groupHeader}>Status</Text>
+          <Text>{status}</Text>
+        </View>
+
+        <View style={styles.group}>
+          <Text style={styles.groupHeader}>Database</Text>
+          <TextInput
+            style={styles.input}
+            value={database}
+            onChangeText={setDatabase}
+            placeholder="Enter BugSplat database name"
           />
-        </Group>
-        <Group name="Events">
-          <Text>{onChangePayload?.value}</Text>
-        </Group>
-        <Group name="Views">
-          <BugsplatExpoView
-            url="https://www.example.com"
-            onLoad={({ nativeEvent: { url } }) => console.log(`Loaded: ${url}`)}
-            style={styles.view}
-          />
-        </Group>
+        </View>
+
+        <View style={styles.group}>
+          <Text style={styles.groupHeader}>Actions</Text>
+          <View style={styles.buttonRow}>
+            <Button title="Init" onPress={handleInit} />
+          </View>
+          <View style={styles.buttonRow}>
+            <Button title="Post Error" onPress={handlePost} />
+          </View>
+          <View style={styles.buttonRow}>
+            <Button title="Set User" onPress={handleSetUser} />
+          </View>
+          <View style={styles.buttonRow}>
+            <Button title="Set Attribute" onPress={handleSetAttribute} />
+          </View>
+          <View style={styles.buttonRow}>
+            <Button title="Test Crash" onPress={handleCrash} color="red" />
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function Group(props: { name: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.group}>
-      <Text style={styles.groupHeader}>{props.name}</Text>
-      {props.children}
-    </View>
-  );
-}
-
-const styles = {
+const styles = StyleSheet.create({
   header: {
-    fontSize: 30,
+    fontSize: 24,
+    fontWeight: 'bold',
     margin: 20,
   },
   groupHeader: {
-    fontSize: 20,
-    marginBottom: 20,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
   },
   group: {
-    margin: 20,
+    margin: 16,
     backgroundColor: '#fff',
     borderRadius: 10,
-    padding: 20,
+    padding: 16,
   },
   container: {
     flex: 1,
-    backgroundColor: '#eee',
+    backgroundColor: '#f0f0f0',
   },
-  view: {
-    flex: 1,
-    height: 200,
+  buttonRow: {
+    marginVertical: 4,
   },
-};
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+  },
+});

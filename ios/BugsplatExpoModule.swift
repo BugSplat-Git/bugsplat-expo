@@ -1,48 +1,135 @@
 import ExpoModulesCore
+import BugSplat
 
 public class BugsplatExpoModule: Module {
-  // Each module class must implement the definition function. The definition consists of components
-  // that describes the module's functionality and behavior.
-  // See https://docs.expo.dev/modules/module-api for more details about available components.
+  private var database: String = ""
+  private var applicationName: String = ""
+  private var applicationVersion: String = ""
+  private var appKey: String = ""
+  private var userName: String = ""
+  private var userEmail: String = ""
+  private var attributes: [String: String] = [:]
+
   public func definition() -> ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
-    // The module will be accessible from `requireNativeModule('BugsplatExpo')` in JavaScript.
     Name("BugsplatExpo")
 
-    // Defines constant property on the module.
-    Constant("PI") {
-      Double.pi
-    }
+    AsyncFunction("init") { (database: String, application: String, version: String, options: [String: Any]?) in
+      self.database = database
+      self.applicationName = application
+      self.applicationVersion = version
 
-    // Defines event names that the module can send to JavaScript.
-    Events("onChange")
+      let bs = BugSplat.shared()
+      bs.applicationName = application
+      bs.applicationVersion = version
+      bs.autoSubmitCrashReport = true
 
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-    Function("hello") {
-      return "Hello world! 👋"
-    }
-
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
-    AsyncFunction("setValueAsync") { (value: String) in
-      // Send an event to JavaScript.
-      self.sendEvent("onChange", [
-        "value": value
-      ])
-    }
-
-    // Enables the module to be used as a native view. Definition components that are accepted as part of the
-    // view definition: Prop, Events.
-    View(BugsplatExpoView.self) {
-      // Defines a setter for the `url` prop.
-      Prop("url") { (view: BugsplatExpoView, url: URL) in
-        if view.webView.url != url {
-          view.webView.load(URLRequest(url: url))
+      if let opts = options {
+        if let autoSubmit = opts["autoSubmitCrashReport"] as? Bool {
+          bs.autoSubmitCrashReport = autoSubmit
+        }
+        if let name = opts["userName"] as? String {
+          bs.userName = name
+          self.userName = name
+        }
+        if let email = opts["userEmail"] as? String {
+          bs.userEmail = email
+          self.userEmail = email
+        }
+        if let key = opts["appKey"] as? String {
+          bs.appKey = key
+          self.appKey = key
+        }
+        if let desc = opts["description"] as? String {
+          bs.notes = desc
+        }
+        if let attrs = opts["attributes"] as? [String: String] {
+          for (key, value) in attrs {
+            bs.setValue(value, forAttribute: key)
+            self.attributes[key] = value
+          }
         }
       }
 
-      Events("onLoad")
+      bs.start()
+    }
+
+    AsyncFunction("post") { (message: String, callstack: String, options: [String: Any]?) -> [String: Any] in
+      let postDatabase = self.database
+      let postApp = self.applicationName
+      let postVersion = self.applicationVersion
+      var postAppKey = self.appKey
+      var postUser = self.userName
+      var postEmail = self.userEmail
+      var postDescription = ""
+
+      if let opts = options {
+        if let key = opts["appKey"] as? String { postAppKey = key }
+        if let user = opts["user"] as? String { postUser = user }
+        if let email = opts["email"] as? String { postEmail = email }
+        if let desc = opts["description"] as? String { postDescription = desc }
+      }
+
+      let url = URL(string: "https://\(postDatabase).bugsplat.com/post/js/")!
+      let boundary = UUID().uuidString
+      var request = URLRequest(url: url)
+      request.httpMethod = "POST"
+      request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+      var body = Data()
+
+      func appendField(_ name: String, _ value: String) {
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(value)\r\n".data(using: .utf8)!)
+      }
+
+      appendField("database", postDatabase)
+      appendField("appName", postApp)
+      appendField("appVersion", postVersion)
+      appendField("appKey", postAppKey)
+      appendField("user", postUser)
+      appendField("email", postEmail)
+      appendField("description", postDescription)
+      appendField("callstack", callstack)
+
+      if !self.attributes.isEmpty {
+        if let json = try? JSONSerialization.data(withJSONObject: self.attributes),
+           let jsonString = String(data: json, encoding: .utf8) {
+          appendField("attributes", jsonString)
+        }
+      }
+
+      body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+      request.httpBody = body
+
+      do {
+        let (_, response) = try await URLSession.shared.data(for: request)
+        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+          return ["success": true]
+        } else {
+          let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+          return ["success": false, "error": "HTTP \(statusCode)"]
+        }
+      } catch {
+        return ["success": false, "error": error.localizedDescription]
+      }
+    }
+
+    Function("setUser") { (name: String, email: String) in
+      self.userName = name
+      self.userEmail = email
+      BugSplat.shared().userName = name
+      BugSplat.shared().userEmail = email
+    }
+
+    Function("setAttribute") { (key: String, value: String) in
+      self.attributes[key] = value
+      BugSplat.shared().setValue(value, forAttribute: key)
+    }
+
+    Function("crash") {
+      let array = NSArray()
+      _ = array.object(at: 99)
     }
   }
 }

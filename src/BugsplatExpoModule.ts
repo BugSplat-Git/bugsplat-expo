@@ -1,12 +1,20 @@
-import { NativeModule, requireNativeModule } from 'expo';
+import { requireNativeModule } from 'expo';
 
-import { BugsplatExpoModuleEvents } from './BugsplatExpo.types';
-
-declare class BugsplatExpoModule extends NativeModule<BugsplatExpoModuleEvents> {
-  PI: number;
-  hello(): string;
-  setValueAsync(value: string): Promise<void>;
+export interface BugsplatExpoNativeModule {
+  init(
+    database: string,
+    application: string,
+    version: string,
+    options?: Record<string, unknown>
+  ): Promise<void>;
+  post(
+    message: string,
+    callstack: string,
+    options?: Record<string, unknown>
+  ): Promise<{ success: boolean; error?: string }>;
+  setUser(name: string, email: string): void;
+  setAttribute(key: string, value: string): void;
+  crash(): void;
 }
 
-// This call loads the native module object from the JSI.
-export default requireNativeModule<BugsplatExpoModule>('BugsplatExpo');
+export default requireNativeModule<BugsplatExpoNativeModule>('BugsplatExpo');
