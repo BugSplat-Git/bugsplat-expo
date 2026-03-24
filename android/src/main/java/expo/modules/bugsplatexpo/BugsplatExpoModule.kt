@@ -29,7 +29,6 @@ class BugsplatExpoModule : Module() {
     Name("BugsplatExpo")
 
     AsyncFunction("init") { database: String, application: String, version: String, options: Map<String, Any>? ->
-      Log.i("BugsplatExpo", "init called: database=$database, app=$application, version=$version")
       this@BugsplatExpoModule.database = database
       this@BugsplatExpoModule.applicationName = application
       this@BugsplatExpoModule.applicationVersion = version
@@ -45,22 +44,31 @@ class BugsplatExpoModule : Module() {
         (opts["attachments"] as? List<String>)?.let { attachments = it.toTypedArray() }
       }
 
-      try {
-        Log.i("BugsplatExpo", "Calling BugSplatBridge.initBugSplat...")
-        BugSplatBridge.initBugSplat(
-          currentActivity,
-          database,
-          application,
-          version,
-          attributes,
-          attachments
-        )
-        initialized = true
-        Log.i("BugsplatExpo", "BugSplatBridge.initBugSplat completed successfully")
-      } catch (e: Exception) {
-        Log.e("BugsplatExpo", "BugSplatBridge.initBugSplat failed", e)
-        throw e
+      // Run initBugSplat on the main thread — Crashpad handler setup requires it
+      val activity = currentActivity
+      val attrs = if (attributes.isNotEmpty()) attributes else null
+      val attach = attachments
+      val latch = java.util.concurrent.CountDownLatch(1)
+      var initError: Exception? = null
+
+      activity.runOnUiThread {
+        try {
+          if (attrs != null || attach != null) {
+            BugSplatBridge.initBugSplat(activity, database, application, version, attrs ?: mutableMapOf(), attach)
+          } else {
+            BugSplatBridge.initBugSplat(activity, database, application, version)
+          }
+        } catch (e: Exception) {
+          Log.e("BugsplatExpo", "initBugSplat failed", e)
+          initError = e
+        } finally {
+          latch.countDown()
+        }
       }
+
+      latch.await()
+      initError?.let { throw it }
+      initialized = true
     }
 
     AsyncFunction("post") { message: String, callstack: String, options: Map<String, Any>? ->

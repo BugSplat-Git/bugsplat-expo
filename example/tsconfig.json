@@ -3,8 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "bugsplat-expo": ["../src/index"],
-      "bugsplat-expo/*": ["../src/*"]
+      "@bugsplat/expo": ["../src/index"],
+      "@bugsplat/expo/*": ["../src/*"]
     }
   }
 }

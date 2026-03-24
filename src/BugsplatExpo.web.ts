@@ -88,7 +88,7 @@ export function setUser(name: string, email: string): void {
  */
 export function setAttribute(key: string, _value: string): void {
   console.warn(
-    `[bugsplat-expo] setAttribute('${key}') is not supported on web.`
+    `[@bugsplat/expo] setAttribute('${key}') is not supported on web.`
   );
 }
 

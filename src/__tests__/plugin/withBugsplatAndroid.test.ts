@@ -1,6 +1,18 @@
 import { AndroidConfig } from 'expo/config-plugins';
 import { withBugsplatAndroid } from '../../../plugin/src/withBugsplatAndroid';
 
+const mockWithAndroidManifest = jest.fn((config: any, callback: any) => {
+  const modConfig = {
+    ...config,
+    modResults: {
+      manifest: {
+        application: [{ $: {} }],
+      },
+    },
+  };
+  return callback(modConfig);
+});
+
 jest.mock('expo/config-plugins', () => {
   const actual = jest.requireActual('expo/config-plugins');
   return {
@@ -8,9 +20,10 @@ jest.mock('expo/config-plugins', () => {
     AndroidConfig: {
       ...actual.AndroidConfig,
       Permissions: {
-        withPermissions: jest.fn((config, _permissions) => config),
+        withPermissions: jest.fn((config: any, _permissions: any) => config),
       },
     },
+    withAndroidManifest: (a: any, b: any) => mockWithAndroidManifest(a, b),
   };
 });
 
@@ -33,5 +46,10 @@ describe('withBugsplatAndroid', () => {
         'android.permission.ACCESS_NETWORK_STATE',
       ]
     );
+  });
+
+  it('sets extractNativeLibs to true for Crashpad handler', () => {
+    const result: any = withBugsplatAndroid(baseConfig, {});
+    expect(result.modResults.manifest.application[0].$['android:extractNativeLibs']).toBe('true');
   });
 });

@@ -1,11 +1,11 @@
-# bugsplat-expo
+# @bugsplat/expo
 
 [BugSplat](https://bugsplat.com) crash and error reporting for Expo apps across iOS, Android, and Web.
 
 ## Installation
 
 ```sh
-npx expo install bugsplat-expo
+npx expo install @bugsplat/expo
 ```
 
 For web error boundary support, also install the optional peer dependency:
@@ -22,7 +22,7 @@ Add the config plugin to your `app.json` or `app.config.js`:
 {
   "expo": {
     "plugins": [
-      "bugsplat-expo",
+      "@bugsplat/expo",
       ["expo-build-properties", {
         "android": {
           "minSdkVersion": 26
@@ -50,7 +50,7 @@ The plugin sets up required native permissions (Android) and optionally configur
 ### Initialize
 
 ```typescript
-import { init } from 'bugsplat-expo';
+import { init } from '@bugsplat/expo';
 
 await init('your-database', 'YourApp', '1.0.0', {
   userName: 'user@example.com',
@@ -62,7 +62,7 @@ await init('your-database', 'YourApp', '1.0.0', {
 ### Report Errors
 
 ```typescript
-import { post } from 'bugsplat-expo';
+import { post } from '@bugsplat/expo';
 
 try {
   riskyOperation();
@@ -75,7 +75,7 @@ try {
 ### Set User Info
 
 ```typescript
-import { setUser } from 'bugsplat-expo';
+import { setUser } from '@bugsplat/expo';
 
 setUser('Jane Doe', 'jane@example.com');
 ```
@@ -83,7 +83,7 @@ setUser('Jane Doe', 'jane@example.com');
 ### Set Custom Attributes
 
 ```typescript
-import { setAttribute } from 'bugsplat-expo';
+import { setAttribute } from '@bugsplat/expo';
 
 setAttribute('environment', 'production');
 ```
@@ -91,7 +91,7 @@ setAttribute('environment', 'production');
 ### Test Crash
 
 ```typescript
-import { crash } from 'bugsplat-expo';
+import { crash } from '@bugsplat/expo';
 
 // Triggers a native crash (iOS/Android) or throws an error (web)
 crash();
@@ -100,7 +100,7 @@ crash();
 ### Web Error Boundary (requires `@bugsplat/react`)
 
 ```tsx
-import { ErrorBoundary } from 'bugsplat-expo';
+import { ErrorBoundary } from '@bugsplat/expo';
 
 function App() {
   return (

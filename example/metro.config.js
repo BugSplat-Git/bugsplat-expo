@@ -19,7 +19,7 @@ config.resolver.nodeModulesPaths = [
 ];
 
 config.resolver.extraNodeModules = {
-  'bugsplat-expo': '..',
+  '@bugsplat/expo': '..',
 };
 
 config.watchFolders = [path.resolve(__dirname, '..')];

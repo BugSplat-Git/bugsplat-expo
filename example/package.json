@@ -9,7 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "bugsplat-expo": "file:..",
+    "@bugsplat/expo": "file:..",
     "expo": "~55.0.8",
     "expo-build-properties": "^55.0.10",
     "react": "19.0.0",

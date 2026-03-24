@@ -25,7 +25,7 @@
       "bundler": "metro"
     },
     "plugins": [
-      "bugsplat-expo",
+      "@bugsplat/expo",
       ["expo-build-properties", {
         "android": {
           "minSdkVersion": 26

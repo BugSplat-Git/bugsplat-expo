@@ -43,7 +43,6 @@ public class BugsplatExpoModule: Module {
       bs.applicationName = application
       bs.applicationVersion = version
       bs.autoSubmitCrashReport = true
-      NSLog("[BugsplatExpo] Configuring BugSplat: database=%@, app=%@, version=%@", database, application, version)
 
       if let opts = options {
         if let autoSubmit = opts["autoSubmitCrashReport"] as? Bool {
@@ -72,9 +71,7 @@ public class BugsplatExpoModule: Module {
         }
       }
 
-      NSLog("[BugsplatExpo] Calling BugSplat.start()")
       bs.start()
-      NSLog("[BugsplatExpo] BugSplat.start() completed")
     }
 
     AsyncFunction("post") { (message: String, callstack: String, options: [String: Any]?) -> [String: Any] in
@@ -126,20 +123,15 @@ public class BugsplatExpoModule: Module {
       body.append("--\(boundary)--\r\n".data(using: .utf8)!)
       request.httpBody = body
 
-      NSLog("[BugsplatExpo] Posting error to %@", url.absoluteString)
-
       do {
         let (_, response) = try await URLSession.shared.data(for: request)
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-          NSLog("[BugsplatExpo] Post succeeded")
           return ["success": true]
         } else {
           let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-          NSLog("[BugsplatExpo] Post failed: HTTP %d", statusCode)
           return ["success": false, "error": "HTTP \(statusCode)"]
         }
       } catch {
-        NSLog("[BugsplatExpo] Post failed: %@", error.localizedDescription)
         return ["success": false, "error": error.localizedDescription]
       }
     }
@@ -157,7 +149,6 @@ public class BugsplatExpoModule: Module {
     }
 
     Function("crash") {
-      NSLog("[BugsplatExpo] Triggering test crash")
       let array = NSArray()
       _ = array.object(at: 99)
     }

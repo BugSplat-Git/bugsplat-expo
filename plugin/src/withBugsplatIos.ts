@@ -35,7 +35,7 @@ const withBugsplatDsymUpload: ConfigPlugin<BugSplatPluginOptions> = (config, pro
 
       const shellScript = [
         'if [ "${CONFIGURATION}" = "Release" ]; then',
-        '  SYMBOL_UPLOAD="${SRCROOT}/../node_modules/bugsplat-expo/scripts/symbol-upload-macos"',
+        '  SYMBOL_UPLOAD="${SRCROOT}/../node_modules/@bugsplat/expo/scripts/symbol-upload-macos"',
         '  if [ -x "$SYMBOL_UPLOAD" ]; then',
         `    "$SYMBOL_UPLOAD" \\\\`,
         `      -b "${props.database}" \\\\`,

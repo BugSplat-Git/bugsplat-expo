@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { init, post, setUser, setAttribute, crash } from 'bugsplat-expo';
+import { init, post, setUser, setAttribute, crash } from '@bugsplat/expo';
 import { Button, Image, ScrollView, Text, View, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 
