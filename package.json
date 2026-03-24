@@ -1,5 +1,5 @@
 {
-  "name": "bugsplat-expo",
+  "name": "@bugsplat/expo",
   "version": "0.1.0",
   "description": "BugSplat crash and error reporting for Expo apps across iOS, Android, and Web",
   "main": "build/index.js",
