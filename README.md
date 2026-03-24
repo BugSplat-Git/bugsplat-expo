@@ -1,6 +1,20 @@
-# @bugsplat/expo
+[![bugsplat-github-banner-basic-outline](https://user-images.githubusercontent.com/20464226/149019306-3186103c-5315-4dad-a499-4fd1df408475.png)](https://bugsplat.com)
+<br/>
 
-[BugSplat](https://bugsplat.com) crash and error reporting for Expo apps across iOS, Android, and Web.
+# <div align="center">BugSplat</div>
+
+### **<div align="center">Crash and error reporting built for busy developers.</div>**
+
+<div align="center">
+    <a href="https://bsky.app/profile/bugsplatco.bsky.social"><img alt="Follow BugSplat on Bluesky" src="https://img.shields.io/badge/Follow%20BugSplat-Bluesky-blue?logo=bluesky&style=social"></a>
+    <a href="https://discord.gg/K4KjjRV5ve"><img alt="Join BugSplat on Discord" src="https://img.shields.io/discord/664965194799251487?label=Join%20Discord&logo=Discord&style=social"></a>
+    <br/>
+    <a href="https://www.npmjs.com/package/@bugsplat/expo"><img alt="@bugsplat/expo on npm" src="https://img.shields.io/npm/v/@bugsplat/expo?label=npm&logo=npm"></a>
+</div>
+
+## Introduction
+
+BugSplat's `@bugsplat/expo` package provides crash and error reporting for Expo apps across iOS, Android, and Web. BugSplat provides you with invaluable insight into the issues tripping up your users. Our Expo integration collects native crash reports, JavaScript errors, and custom metadata so that you can fix bugs and deliver a better user experience.
 
 ## Installation
 
