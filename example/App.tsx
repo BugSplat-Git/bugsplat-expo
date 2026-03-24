@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { init, post, setUser, setAttribute, crash } from 'bugsplat-expo';
-import { Button, SafeAreaView, ScrollView, Text, View, StyleSheet, TextInput } from 'react-native';
+import { Button, Image, ScrollView, Text, View, StyleSheet, TextInput } from 'react-native';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 
 const DATABASE = 'your-database';
 const APP_NAME = 'bugsplat-expo-example';
@@ -46,8 +47,10 @@ export default function App() {
   };
 
   return (
+    <SafeAreaProvider>
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.container}>
+        <Image source={require('./assets/bug.png')} style={styles.logo} />
         <Text style={styles.header}>BugSplat Expo Example</Text>
 
         <View style={styles.group}>
@@ -85,14 +88,22 @@ export default function App() {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  logo: {
+    width: 120,
+    height: 120,
+    alignSelf: 'center',
+    marginTop: 20,
+  },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
     margin: 20,
+    textAlign: 'center',
   },
   groupHeader: {
     fontSize: 18,

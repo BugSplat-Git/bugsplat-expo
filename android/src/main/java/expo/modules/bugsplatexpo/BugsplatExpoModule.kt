@@ -1,6 +1,7 @@
 package expo.modules.bugsplatexpo
 
 import android.app.Activity
+import android.util.Log
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.exception.Exceptions
@@ -28,6 +29,7 @@ class BugsplatExpoModule : Module() {
     Name("BugsplatExpo")
 
     AsyncFunction("init") { database: String, application: String, version: String, options: Map<String, Any>? ->
+      Log.i("BugsplatExpo", "init called: database=$database, app=$application, version=$version")
       this@BugsplatExpoModule.database = database
       this@BugsplatExpoModule.applicationName = application
       this@BugsplatExpoModule.applicationVersion = version
@@ -43,15 +45,22 @@ class BugsplatExpoModule : Module() {
         (opts["attachments"] as? List<String>)?.let { attachments = it.toTypedArray() }
       }
 
-      BugSplatBridge.initBugSplat(
-        currentActivity,
-        database,
-        application,
-        version,
-        attributes,
-        attachments
-      )
-      initialized = true
+      try {
+        Log.i("BugsplatExpo", "Calling BugSplatBridge.initBugSplat...")
+        BugSplatBridge.initBugSplat(
+          currentActivity,
+          database,
+          application,
+          version,
+          attributes,
+          attachments
+        )
+        initialized = true
+        Log.i("BugsplatExpo", "BugSplatBridge.initBugSplat completed successfully")
+      } catch (e: Exception) {
+        Log.e("BugsplatExpo", "BugSplatBridge.initBugSplat failed", e)
+        throw e
+      }
     }
 
     AsyncFunction("post") { message: String, callstack: String, options: Map<String, Any>? ->

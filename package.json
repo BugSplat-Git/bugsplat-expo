@@ -14,8 +14,7 @@
     "prepublishOnly": "expo-module prepublishOnly",
     "expo-module": "expo-module",
     "open:ios": "xed example/ios",
-    "open:android": "open -a \"Android Studio\" example/android",
-    "postinstall": "node scripts/download-native-deps.js"
+    "open:android": "open -a \"Android Studio\" example/android"
   },
   "keywords": [
     "react-native",
@@ -35,7 +34,10 @@
   "license": "MIT",
   "homepage": "https://github.com/BugSplat-Git/bugsplat-expo#readme",
   "dependencies": {
-    "bugsplat": "^8.0.0"
+    "bugsplat": "^8.0.0",
+    "expo": "~55.0.8",
+    "react": "19.2.0",
+    "react-native": "0.83.2"
   },
   "devDependencies": {
     "@bugsplat/react": "^2.0.0",
@@ -57,11 +59,22 @@
     }
   },
   "jest": {
-    "roots": ["<rootDir>/src"],
+    "roots": [
+      "<rootDir>/src"
+    ],
     "transform": {
       "^.+\\.tsx?$": "ts-jest"
     },
-    "testPathIgnorePatterns": ["/node_modules/", "/build/"],
-    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json"]
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/build/"
+    ],
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json"
+    ]
   }
 }

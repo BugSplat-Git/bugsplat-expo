@@ -2,11 +2,13 @@ import { ConfigPlugin, withInfoPlist, withXcodeProject } from 'expo/config-plugi
 import type { BugSplatPluginOptions } from './types';
 
 export const withBugsplatIos: ConfigPlugin<BugSplatPluginOptions> = (config, props) => {
-  // Add BugSplatDatabase to Info.plist
-  config = withInfoPlist(config, (config) => {
-    config.modResults.BugSplatDatabase = props.database;
-    return config;
-  });
+  // Only set BugSplatDatabase in Info.plist if explicitly provided
+  if (props.database) {
+    config = withInfoPlist(config, (config) => {
+      config.modResults.BugSplatDatabase = props.database;
+      return config;
+    });
+  }
 
   // Optionally add dSYM upload build phase
   if (props.enableDsymUpload) {

@@ -1,6 +1,24 @@
 import ExpoModulesCore
 import BugSplat
 
+class BugsplatDelegate: NSObject, BugSplatDelegate {
+  func bugSplatWillSendCrashReport(_ bugSplat: BugSplat) {
+    NSLog("[BugsplatExpo] Will send crash report")
+  }
+
+  func bugSplatDidFinishSendingCrashReport(_ bugSplat: BugSplat) {
+    NSLog("[BugsplatExpo] Finished sending crash report")
+  }
+
+  func bugSplat(_ bugSplat: BugSplat, didFailWithError error: Error) {
+    NSLog("[BugsplatExpo] Failed to send crash report: %@", error.localizedDescription)
+  }
+
+  func bugSplatWillCancelSendingCrashReport(_ bugSplat: BugSplat) {
+    NSLog("[BugsplatExpo] User cancelled sending crash report")
+  }
+}
+
 public class BugsplatExpoModule: Module {
   private var database: String = ""
   private var applicationName: String = ""
@@ -9,6 +27,7 @@ public class BugsplatExpoModule: Module {
   private var userName: String = ""
   private var userEmail: String = ""
   private var attributes: [String: String] = [:]
+  private let bugsplatDelegate = BugsplatDelegate()
 
   public func definition() -> ModuleDefinition {
     Name("BugsplatExpo")
@@ -19,9 +38,12 @@ public class BugsplatExpoModule: Module {
       self.applicationVersion = version
 
       let bs = BugSplat.shared()
+      bs.delegate = self.bugsplatDelegate
+      bs.bugSplatDatabase = database
       bs.applicationName = application
       bs.applicationVersion = version
       bs.autoSubmitCrashReport = true
+      NSLog("[BugsplatExpo] Configuring BugSplat: database=%@, app=%@, version=%@", database, application, version)
 
       if let opts = options {
         if let autoSubmit = opts["autoSubmitCrashReport"] as? Bool {
@@ -44,13 +66,15 @@ public class BugsplatExpoModule: Module {
         }
         if let attrs = opts["attributes"] as? [String: String] {
           for (key, value) in attrs {
-            bs.setValue(value, forAttribute: key)
+            _ = bs.set(value, for: key)
             self.attributes[key] = value
           }
         }
       }
 
+      NSLog("[BugsplatExpo] Calling BugSplat.start()")
       bs.start()
+      NSLog("[BugsplatExpo] BugSplat.start() completed")
     }
 
     AsyncFunction("post") { (message: String, callstack: String, options: [String: Any]?) -> [String: Any] in
@@ -102,15 +126,20 @@ public class BugsplatExpoModule: Module {
       body.append("--\(boundary)--\r\n".data(using: .utf8)!)
       request.httpBody = body
 
+      NSLog("[BugsplatExpo] Posting error to %@", url.absoluteString)
+
       do {
         let (_, response) = try await URLSession.shared.data(for: request)
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+          NSLog("[BugsplatExpo] Post succeeded")
           return ["success": true]
         } else {
           let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+          NSLog("[BugsplatExpo] Post failed: HTTP %d", statusCode)
           return ["success": false, "error": "HTTP \(statusCode)"]
         }
       } catch {
+        NSLog("[BugsplatExpo] Post failed: %@", error.localizedDescription)
         return ["success": false, "error": error.localizedDescription]
       }
     }
@@ -124,10 +153,11 @@ public class BugsplatExpoModule: Module {
 
     Function("setAttribute") { (key: String, value: String) in
       self.attributes[key] = value
-      BugSplat.shared().setValue(value, forAttribute: key)
+      _ = BugSplat.shared().set(value, for: key)
     }
 
     Function("crash") {
+      NSLog("[BugsplatExpo] Triggering test crash")
       let array = NSArray()
       _ = array.object(at: 99)
     }

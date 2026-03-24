@@ -25,7 +25,7 @@ describe('withBugsplatAndroid', () => {
   });
 
   it('adds INTERNET and ACCESS_NETWORK_STATE permissions', () => {
-    withBugsplatAndroid(baseConfig, { database: 'my-db' });
+    withBugsplatAndroid(baseConfig, {});
     expect(AndroidConfig.Permissions.withPermissions).toHaveBeenCalledWith(
       baseConfig,
       [

@@ -22,17 +22,25 @@ Add the config plugin to your `app.json` or `app.config.js`:
 {
   "expo": {
     "plugins": [
-      ["bugsplat-expo", { "database": "your-database" }]
+      "bugsplat-expo",
+      ["expo-build-properties", {
+        "android": {
+          "minSdkVersion": 26
+        }
+      }]
     ]
   }
 }
 ```
 
+The `bugsplat-android` SDK requires Android minSdk 26 (Android 8.0+). If your project's minSdk is already >= 26, the `expo-build-properties` plugin is not needed.
+
+The plugin sets up required native permissions (Android) and optionally configures dSYM uploads (iOS). Configure your database in code via `init()`.
+
 ### Plugin Options
 
 | Option | Required | Description |
 |--------|----------|-------------|
-| `database` | Yes | Your BugSplat database name |
 | `enableDsymUpload` | No | Add an Xcode build phase to upload dSYMs on release builds |
 | `symbolUploadClientId` | No | BugSplat API client ID for symbol upload |
 | `symbolUploadClientSecret` | No | BugSplat API client secret for symbol upload |
@@ -141,11 +149,6 @@ Set a custom attribute. Note: not supported on web.
 ### `crash()`
 
 Trigger a test crash to verify integration.
-
-## Prerequisites
-
-- **iOS**: The BugSplat xcframework is automatically downloaded during `npm install`
-- **Android**: Requires `com.bugsplat:bugsplat-android` on Maven Central
 
 ## License
 

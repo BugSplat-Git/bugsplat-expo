@@ -3,18 +3,13 @@ import { withBugsplatIos } from './withBugsplatIos';
 import { withBugsplatAndroid } from './withBugsplatAndroid';
 import type { BugSplatPluginOptions } from './types';
 
-const pkg = require('bugsplat-expo/package.json');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pkg = require('../../package.json');
 
-const withBugsplat: ConfigPlugin<BugSplatPluginOptions> = (config, props) => {
-  if (!props?.database) {
-    throw new Error(
-      'bugsplat-expo config plugin requires a "database" property. ' +
-      'Example: ["bugsplat-expo", { "database": "your-database" }]'
-    );
-  }
-
-  config = withBugsplatIos(config, props);
-  config = withBugsplatAndroid(config, props);
+const withBugsplat: ConfigPlugin<BugSplatPluginOptions | void> = (config, props) => {
+  const options: BugSplatPluginOptions = props ?? {};
+  config = withBugsplatIos(config, options);
+  config = withBugsplatAndroid(config, options);
   return config;
 };
 

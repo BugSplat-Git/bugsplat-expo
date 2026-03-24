@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "BugSplat Expo Example",
+    "slug": "bugsplat-expo-example",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/bug.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/bug.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f0f0f0"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bugsplat.expo.example"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.bugsplat.expo.example"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "bugsplat-expo",
+      ["expo-build-properties", {
+        "android": {
+          "minSdkVersion": 26
+        }
+      }]
+    ]
+  }
+}

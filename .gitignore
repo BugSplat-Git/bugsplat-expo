@@ -54,11 +54,20 @@ yarn-debug.log
 yarn-error.log
 
 # Expo
-.expo/*
+.expo/
+example/.expo/
+
+# Generated native projects (recreated by `npx expo prebuild`)
+example/ios/
+example/android/
+
+# Downloaded native frameworks (recreated by podspec prepare_command)
+ios/Frameworks/
 
 # Built files
 build/
 plugin/build/
+plugin/tsconfig.tsbuildinfo
 
-# Downloaded native frameworks
-ios/Frameworks/
+# Playwright
+.playwright-mcp/
