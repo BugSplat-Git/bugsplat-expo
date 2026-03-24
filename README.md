@@ -164,6 +164,35 @@ Set a custom attribute. Note: not supported on web.
 
 Trigger a test crash to verify integration.
 
+## Testing Native Crashes
+
+To test native crash reporting, you must run a **release build** — the debugger intercepts crashes in debug builds.
+
+```sh
+# iOS
+npx expo run:ios --configuration Release
+
+# Android
+npx expo run:android --variant release
+```
+
+**iOS**: Crash reports are captured at crash time by PLCrashReporter and **uploaded on the next app launch** when `init()` is called again. After triggering a test crash, relaunch the app and call `init()` to upload the pending report.
+
+**Android**: Crash reports are captured and **uploaded immediately at crash time** by the Crashpad handler process.
+
+## Troubleshooting
+
+### Android: Crashes not uploading on emulator
+
+The Crashpad handler process requires native libraries to be extracted to disk. The `@bugsplat/expo` config plugin sets `extractNativeLibs=true` automatically. If you're still not seeing crashes:
+
+- Use a **`google_apis`** emulator image (not `google_apis_playstore`). The Play Store emulator images have restrictions that prevent Crashpad's handler process from executing.
+- Alternatively, test on a **physical Android device** where this is not an issue.
+
+### iOS: No crash report after test crash
+
+Make sure you **relaunch the app and call `init()` again** after the crash. PLCrashReporter saves the crash to disk and uploads it on the next launch.
+
 ## License
 
 MIT
