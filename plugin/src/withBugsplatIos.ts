@@ -10,18 +10,37 @@ export const withBugsplatIos: ConfigPlugin<BugSplatPluginOptions> = (config, pro
     });
   }
 
-  // Optionally add dSYM upload build phase
-  if (props.enableDsymUpload) {
-    config = withBugsplatDsymUpload(config, props);
+  // Optionally add symbol upload build phase
+  if (props.enableSymbolUpload) {
+    config = withBugsplatSymbolUpload(config, props);
   }
 
   return config;
 };
 
-const withBugsplatDsymUpload: ConfigPlugin<BugSplatPluginOptions> = (config, props) => {
+export const buildIosUploadScript = (props: BugSplatPluginOptions): string => {
+  const clientId = props.symbolUploadClientId || '${BUGSPLAT_CLIENT_ID}';
+  const clientSecret = props.symbolUploadClientSecret || '${BUGSPLAT_CLIENT_SECRET}';
+  const database = props.database || '${BUGSPLAT_DATABASE}';
+
+  return [
+    'if [ "${CONFIGURATION}" = "Release" ]; then',
+    `  npx @bugsplat/symbol-upload \\\\`,
+    `    -b "${database}" \\\\`,
+    `    -a "\${PRODUCT_NAME}" \\\\`,
+    `    -v "\${MARKETING_VERSION}" \\\\`,
+    `    -i "${clientId}" \\\\`,
+    `    -s "${clientSecret}" \\\\`,
+    `    -d "\${DWARF_DSYM_FOLDER_PATH}" \\\\`,
+    '    -f "**/*.dSYM"',
+    'fi',
+  ].join('\\n');
+};
+
+const withBugsplatSymbolUpload: ConfigPlugin<BugSplatPluginOptions> = (config, props) => {
   return withXcodeProject(config, (config) => {
     const project = config.modResults;
-    const buildPhaseComment = 'Upload dSYMs to BugSplat';
+    const buildPhaseComment = 'Upload symbols to BugSplat';
 
     // Check if build phase already exists
     const shellScriptPhases = project.hash.project.objects['PBXShellScriptBuildPhase'] || {};
@@ -30,26 +49,7 @@ const withBugsplatDsymUpload: ConfigPlugin<BugSplatPluginOptions> = (config, pro
     );
 
     if (!alreadyExists) {
-      const clientId = props.symbolUploadClientId || '';
-      const clientSecret = props.symbolUploadClientSecret || '';
-
-      const shellScript = [
-        'if [ "${CONFIGURATION}" = "Release" ]; then',
-        '  SYMBOL_UPLOAD="${SRCROOT}/../node_modules/@bugsplat/expo/scripts/symbol-upload-macos"',
-        '  if [ -x "$SYMBOL_UPLOAD" ]; then',
-        `    "$SYMBOL_UPLOAD" \\\\`,
-        `      -b "${props.database}" \\\\`,
-        `      -a "\${PRODUCT_NAME}" \\\\`,
-        `      -v "\${MARKETING_VERSION}" \\\\`,
-        `      -i "${clientId}" \\\\`,
-        `      -s "${clientSecret}" \\\\`,
-        `      -d "\${DWARF_DSYM_FOLDER_PATH}" \\\\`,
-        '      -f "**/*.dSYM"',
-        '  else',
-        '    echo "warning: symbol-upload-macos not found, skipping dSYM upload"',
-        '  fi',
-        'fi',
-      ].join('\\n');
+      const shellScript = buildIosUploadScript(props);
 
       project.addBuildPhase(
         [],

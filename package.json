@@ -4,6 +4,9 @@
   "description": "BugSplat crash and error reporting for Expo apps across iOS, Android, and Web",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "bin": {
+    "bugsplat-expo": "./bin/upload-symbols.js"
+  },
   "scripts": {
     "build": "expo-module build",
     "build:plugin": "tsc --project plugin/tsconfig.json",
@@ -51,10 +54,14 @@
   "peerDependencies": {
     "expo": "*",
     "react": "*",
-    "react-native": "*"
+    "react-native": "*",
+    "@bugsplat/symbol-upload": "*"
   },
   "peerDependenciesMeta": {
     "@bugsplat/react": {
+      "optional": true
+    },
+    "@bugsplat/symbol-upload": {
       "optional": true
     }
   },

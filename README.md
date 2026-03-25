@@ -36,7 +36,10 @@ Add the config plugin to your `app.json` or `app.config.js`:
 {
   "expo": {
     "plugins": [
-      "@bugsplat/expo",
+      ["@bugsplat/expo", {
+        "database": "your-database",
+        "enableSymbolUpload": true
+      }],
       ["expo-build-properties", {
         "android": {
           "minSdkVersion": 26
@@ -49,15 +52,72 @@ Add the config plugin to your `app.json` or `app.config.js`:
 
 The `bugsplat-android` SDK requires Android minSdk 26 (Android 8.0+). If your project's minSdk is already >= 26, the `expo-build-properties` plugin is not needed.
 
-The plugin sets up required native permissions (Android) and optionally configures dSYM uploads (iOS). Configure your database in code via `init()`.
+The plugin sets up required native permissions (Android) and optionally configures automatic symbol uploads for both platforms. Configure your database in code via `init()`.
 
 ### Plugin Options
 
 | Option | Required | Description |
 |--------|----------|-------------|
-| `enableDsymUpload` | No | Add an Xcode build phase to upload dSYMs on release builds |
-| `symbolUploadClientId` | No | BugSplat API client ID for symbol upload |
-| `symbolUploadClientSecret` | No | BugSplat API client secret for symbol upload |
+| `database` | No | BugSplat database name (can also be set via `init()` or `BUGSPLAT_DATABASE` env var) |
+| `enableSymbolUpload` | No | Enable automatic symbol upload for iOS (dSYMs) and Android (.so files) |
+| `symbolUploadClientId` | No | BugSplat API client ID (or set `BUGSPLAT_CLIENT_ID` env var) |
+| `symbolUploadClientSecret` | No | BugSplat API client secret (or set `BUGSPLAT_CLIENT_SECRET` env var) |
+
+### Symbol Upload
+
+Production crash reports require debug symbols to produce readable stack traces. Enable automatic symbol uploads by setting `enableSymbolUpload` in your plugin config:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      ["@bugsplat/expo", {
+        "database": "your-database",
+        "enableSymbolUpload": true,
+        "symbolUploadClientId": "your-client-id",
+        "symbolUploadClientSecret": "your-client-secret"
+      }]
+    ]
+  }
+}
+```
+
+Credentials can also be provided via environment variables (`BUGSPLAT_CLIENT_ID`, `BUGSPLAT_CLIENT_SECRET`) so they don't need to be committed to source control.
+
+When enabled, this configures:
+- **iOS**: An Xcode build phase that uploads `.dSYM` files on Release builds
+- **Android**: A Gradle task (`uploadBugsplatSymbols`) that uploads `.so` files converted to `.sym` format
+
+Both use [`@bugsplat/symbol-upload`](https://github.com/BugSplat-Git/symbol-upload) via `npx`. Install it as a dev dependency for best results:
+
+```sh
+npm install --save-dev @bugsplat/symbol-upload
+```
+
+#### Standalone CLI
+
+For CI/CD pipelines or EAS Build workflows, you can upload symbols manually:
+
+```sh
+# Upload iOS symbols
+npx @bugsplat/expo upload-symbols --platform ios
+
+# Upload Android symbols
+npx @bugsplat/expo upload-symbols --platform android
+
+# Upload both platforms
+npx @bugsplat/expo upload-symbols
+
+# With explicit options
+npx @bugsplat/expo upload-symbols \
+  --database your-database \
+  --client-id your-client-id \
+  --client-secret your-client-secret \
+  --platform ios \
+  --directory /path/to/dsyms
+```
+
+The CLI auto-detects build output paths and reads configuration from `app.json`. Run `npx @bugsplat/expo upload-symbols --help` for all options.
 
 ## Usage
 
