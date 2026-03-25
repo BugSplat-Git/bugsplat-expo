@@ -95,10 +95,13 @@ export default function App() {
         <View style={styles.group}>
           <Text style={styles.groupHeader}>Error Boundary</Text>
           <ErrorBoundary
-            fallback={({ error, resetError }) => (
+            fallback={({ error, resetErrorBoundary }) => (
               <View>
                 <Text style={styles.errorText}>Caught: {error.message}</Text>
-                <Button title="Reset" onPress={resetError} />
+                <Button title="Reset" onPress={() => {
+                  setTriggerRenderError(false);
+                  resetErrorBoundary();
+                }} />
               </View>
             )}
           >

@@ -133,10 +133,10 @@ The fallback prop accepts a React node or a render function:
 
 ```tsx
 <ErrorBoundary
-  fallback={({ error, resetError }) => (
+  fallback={({ error, resetErrorBoundary }) => (
     <View>
       <Text>{error.message}</Text>
-      <Button title="Try again" onPress={resetError} />
+      <Button title="Try again" onPress={resetErrorBoundary} />
     </View>
   )}
 >

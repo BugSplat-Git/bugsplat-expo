@@ -56,7 +56,7 @@ describe("NativeErrorBoundary", () => {
     });
   });
 
-  describe("resetError", () => {
+  describe("resetErrorBoundary", () => {
     it("resets hasError and error in state", () => {
       const instance = new NativeErrorBoundary({ children: null });
       // Simulate error state
@@ -66,7 +66,7 @@ describe("NativeErrorBoundary", () => {
       const setStateSpy = jest.fn();
       instance.setState = setStateSpy;
 
-      instance.resetError();
+      instance.resetErrorBoundary();
 
       expect(setStateSpy).toHaveBeenCalledWith({
         hasError: false,
@@ -107,7 +107,7 @@ describe("NativeErrorBoundary", () => {
       expect(result).toBe(fallback);
     });
 
-    it("calls function fallback with error and resetError", () => {
+    it("calls function fallback with error and resetErrorBoundary", () => {
       const error = new Error("oops");
       const fallbackFn = jest.fn().mockReturnValue(
         React.createElement("div", null, "error")
@@ -124,7 +124,7 @@ describe("NativeErrorBoundary", () => {
       expect(fallbackFn).toHaveBeenCalledTimes(1);
       expect(fallbackFn).toHaveBeenCalledWith({
         error,
-        resetError: instance.resetError,
+        resetErrorBoundary: instance.resetErrorBoundary,
       });
       expect(result).toEqual(React.createElement("div", null, "error"));
     });

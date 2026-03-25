@@ -5,7 +5,7 @@ interface NativeErrorBoundaryProps {
   children?: ReactNode;
   fallback?:
     | ReactNode
-    | ((props: { error: Error; resetError: () => void }) => ReactNode);
+    | ((props: { error: Error; resetErrorBoundary: () => void }) => ReactNode);
 }
 
 interface NativeErrorBoundaryState {
@@ -29,7 +29,7 @@ export class NativeErrorBoundary extends Component<
     }).catch((err) => console.warn("BugSplat post failed:", err));
   }
 
-  resetError = () => this.setState({ hasError: false, error: null });
+  resetErrorBoundary = () => this.setState({ hasError: false, error: null });
 
   render() {
     if (this.state.hasError) {
@@ -37,7 +37,7 @@ export class NativeErrorBoundary extends Component<
       if (typeof fallback === "function") {
         return fallback({
           error: this.state.error!,
-          resetError: this.resetError,
+          resetErrorBoundary: this.resetErrorBoundary,
         });
       }
       return fallback ?? null;
