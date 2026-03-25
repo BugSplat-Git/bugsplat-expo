@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -150,11 +150,16 @@ function runUpload({ database, application, version, clientId, clientSecret, dir
     args.push('-m');
   }
 
-  const cmd = `npx ${args.map((a) => `"${a}"`).join(' ')}`;
-  console.log(`Running: ${cmd}`);
+  // Log the command with credentials redacted
+  const redactedArgs = args.map((a, i) => {
+    const prev = args[i - 1];
+    if (prev === '-i' || prev === '-s') return '"***"';
+    return `"${a}"`;
+  });
+  console.log(`Running: npx ${redactedArgs.join(' ')}`);
 
   try {
-    execSync(cmd, { stdio: 'inherit' });
+    execFileSync('npx', args, { stdio: 'inherit' });
     return true;
   } catch (error) {
     console.error(`Symbol upload failed: ${error.message}`);

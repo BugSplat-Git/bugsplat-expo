@@ -1,12 +1,13 @@
 // @ts-nocheck — CLI tests shell out to Node; Node types are not in the Expo module tsconfig
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import path from 'path';
 
 const CLI_PATH = path.resolve(__dirname, '../../../bin/upload-symbols.js');
 
 function runCli(args: string, env: Record<string, string> = {}): { stdout: string; stderr: string; exitCode: number } {
+  const argv = args.split(/\s+/).filter(Boolean);
   try {
-    const stdout = execSync(`node ${CLI_PATH} ${args}`, {
+    const stdout = execFileSync(process.execPath, [CLI_PATH, ...argv], {
       encoding: 'utf-8',
       env: { ...process.env, ...env },
       timeout: 10000,
