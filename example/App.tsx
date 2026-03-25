@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { init, post, setUser, setAttribute, crash } from '@bugsplat/expo';
+import { init, post, setUser, setAttribute, crash, ErrorBoundary } from '@bugsplat/expo';
 import { Button, Image, ScrollView, Text, View, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -7,9 +7,14 @@ const DATABASE = 'your-database';
 const APP_NAME = 'bugsplat-expo-example';
 const APP_VERSION = '1.0.0';
 
+function BuggyComponent() {
+  throw new Error('Test render error caught by ErrorBoundary');
+}
+
 export default function App() {
   const [status, setStatus] = useState('Not initialized');
   const [database, setDatabase] = useState(DATABASE);
+  const [triggerRenderError, setTriggerRenderError] = useState(false);
 
   const handleInit = async () => {
     try {
@@ -86,6 +91,27 @@ export default function App() {
             <Button title="Test Crash" onPress={handleCrash} color="red" />
           </View>
         </View>
+
+        <View style={styles.group}>
+          <Text style={styles.groupHeader}>Error Boundary</Text>
+          <ErrorBoundary
+            fallback={({ error, resetError }) => (
+              <View>
+                <Text style={styles.errorText}>Caught: {error.message}</Text>
+                <Button title="Reset" onPress={resetError} />
+              </View>
+            )}
+          >
+            {triggerRenderError && <BuggyComponent />}
+          </ErrorBoundary>
+          <View style={styles.buttonRow}>
+            <Button
+              title="Trigger Render Error"
+              onPress={() => setTriggerRenderError(true)}
+              color="orange"
+            />
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
     </SafeAreaProvider>
@@ -129,5 +155,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     fontSize: 16,
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
+    marginBottom: 8,
   },
 });
