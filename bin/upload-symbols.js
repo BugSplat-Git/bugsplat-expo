@@ -150,13 +150,10 @@ function runUpload({ database, application, version, clientId, clientSecret, dir
     args.push('-m');
   }
 
-  // Log the command with credentials redacted
-  const redactedArgs = args.map((a, i) => {
-    const prev = args[i - 1];
-    if (prev === '-i' || prev === '-s') return '"***"';
-    return `"${a}"`;
-  });
-  console.log(`Running: npx ${redactedArgs.join(' ')}`);
+  console.log(
+    'Running: npx @bugsplat/symbol-upload -b %s -a %s -v %s -i *** -s *** -d %s -f %s%s',
+    database, application, version, directory, filePattern, dumpSyms ? ' -m' : ''
+  );
 
   try {
     execFileSync('npx', args, { stdio: 'inherit' });

@@ -55,13 +55,13 @@ describe('withBugsplatIos', () => {
 });
 
 describe('buildIosUploadScript', () => {
-  it('uses npx @bugsplat/symbol-upload', () => {
+  it('uses npx @bugsplat/symbol-upload with --yes flag', () => {
     const script = buildIosUploadScript({
       database: 'my-db',
       symbolUploadClientId: 'test-id',
       symbolUploadClientSecret: 'test-secret',
     });
-    expect(script).toContain('npx @bugsplat/symbol-upload');
+    expect(script).toContain('npx --yes @bugsplat/symbol-upload');
   });
 
   it('includes database, client ID, and client secret from props', () => {
@@ -92,5 +92,12 @@ describe('buildIosUploadScript', () => {
     const script = buildIosUploadScript({ database: 'my-db' });
     expect(script).toContain('**/*.dSYM');
     expect(script).toContain('${DWARF_DSYM_FOLDER_PATH}');
+  });
+
+  it('includes npx availability check and graceful fallback', () => {
+    const script = buildIosUploadScript({ database: 'my-db' });
+    expect(script).toContain('command -v npx');
+    expect(script).toContain('warning: npx not found');
+    expect(script).toContain('exit 0');
   });
 });

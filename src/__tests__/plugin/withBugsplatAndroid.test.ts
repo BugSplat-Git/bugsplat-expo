@@ -13,7 +13,15 @@ const mockWithAndroidManifest = jest.fn((config: any, callback: any) => {
   return callback(modConfig);
 });
 
-const mockWithAppBuildGradle = jest.fn((config: any, _callback: any) => config);
+const mockWithAppBuildGradle = jest.fn((config: any, callback: any) => {
+  const modConfig = {
+    ...config,
+    modResults: {
+      contents: '// existing build.gradle\n',
+    },
+  };
+  return callback(modConfig);
+});
 
 jest.mock('expo/config-plugins', () => {
   const actual = jest.requireActual('expo/config-plugins');
@@ -62,21 +70,42 @@ describe('withBugsplatAndroid', () => {
   });
 
   it('adds Gradle task when enableSymbolUpload is true', () => {
-    withBugsplatAndroid(baseConfig, {
+    const result: any = withBugsplatAndroid(baseConfig, {
       enableSymbolUpload: true,
       database: 'my-db',
       symbolUploadClientId: 'client-id',
       symbolUploadClientSecret: 'client-secret',
     });
     expect(mockWithAppBuildGradle).toHaveBeenCalled();
+    expect(result.modResults.contents).toContain('uploadBugsplatSymbols');
+  });
+
+  it('does not duplicate Gradle task on repeated invocations', () => {
+    // Simulate a build.gradle that already has the task
+    mockWithAppBuildGradle.mockImplementationOnce((config: any, callback: any) => {
+      return callback({
+        ...config,
+        modResults: { contents: '// existing\nuploadBugsplatSymbols\n' },
+      });
+    });
+    const result: any = withBugsplatAndroid(baseConfig, {
+      enableSymbolUpload: true,
+      database: 'my-db',
+    });
+    // Should not append a second copy
+    const matches = result.modResults.contents.match(/uploadBugsplatSymbols/g);
+    expect(matches).toHaveLength(1);
   });
 });
 
 describe('buildAndroidGradleTask', () => {
-  it('registers uploadBugsplatSymbols task', () => {
+  it('registers uploadBugsplatSymbols task using Groovy syntax', () => {
     const task = buildAndroidGradleTask({ database: 'my-db' });
-    expect(task).toContain('uploadBugsplatSymbols');
-    expect(task).toContain('Exec::class');
+    expect(task).toContain('tasks.register("uploadBugsplatSymbols", Exec)');
+    expect(task).toContain('def bsDatabase');
+    // Should NOT contain Kotlin DSL syntax
+    expect(task).not.toContain('Exec::class');
+    expect(task).not.toContain('val ');
   });
 
   it('uses npx @bugsplat/symbol-upload with -m flag', () => {

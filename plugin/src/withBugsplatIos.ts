@@ -1,6 +1,9 @@
 import { ConfigPlugin, withInfoPlist, withXcodeProject } from 'expo/config-plugins';
 import type { BugSplatPluginOptions } from './types';
 
+const LEGACY_BUILD_PHASE_NAME = 'Upload dSYMs to BugSplat';
+const BUILD_PHASE_NAME = 'Upload symbols to BugSplat';
+
 export const withBugsplatIos: ConfigPlugin<BugSplatPluginOptions> = (config, props) => {
   // Only set BugSplatDatabase in Info.plist if explicitly provided
   if (props.database) {
@@ -25,7 +28,11 @@ export const buildIosUploadScript = (props: BugSplatPluginOptions): string => {
 
   return [
     'if [ "${CONFIGURATION}" = "Release" ]; then',
-    `  npx @bugsplat/symbol-upload \\\\`,
+    '  if ! command -v npx &> /dev/null; then',
+    '    echo "warning: npx not found — skipping BugSplat symbol upload"',
+    '    exit 0',
+    '  fi',
+    `  npx --yes @bugsplat/symbol-upload \\\\`,
     `    -b "${database}" \\\\`,
     `    -a "\${PRODUCT_NAME}" \\\\`,
     `    -v "\${MARKETING_VERSION}" \\\\`,
@@ -40,12 +47,14 @@ export const buildIosUploadScript = (props: BugSplatPluginOptions): string => {
 const withBugsplatSymbolUpload: ConfigPlugin<BugSplatPluginOptions> = (config, props) => {
   return withXcodeProject(config, (config) => {
     const project = config.modResults;
-    const buildPhaseComment = 'Upload symbols to BugSplat';
-
-    // Check if build phase already exists
     const shellScriptPhases = project.hash.project.objects['PBXShellScriptBuildPhase'] || {};
+
+    // Check for existing build phase (current name or legacy name from older versions)
     const alreadyExists = Object.values(shellScriptPhases).some(
-      (phase: any) => typeof phase === 'object' && phase.name === JSON.stringify(buildPhaseComment)
+      (phase: any) =>
+        typeof phase === 'object' &&
+        (phase.name === JSON.stringify(BUILD_PHASE_NAME) ||
+          phase.name === JSON.stringify(LEGACY_BUILD_PHASE_NAME))
     );
 
     if (!alreadyExists) {
@@ -54,7 +63,7 @@ const withBugsplatSymbolUpload: ConfigPlugin<BugSplatPluginOptions> = (config, p
       project.addBuildPhase(
         [],
         'PBXShellScriptBuildPhase',
-        buildPhaseComment,
+        BUILD_PHASE_NAME,
         project.getFirstTarget().uuid,
         { shellPath: '/bin/sh', shellScript }
       );

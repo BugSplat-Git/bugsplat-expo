@@ -2,12 +2,12 @@
 import { execFileSync } from 'child_process';
 import path from 'path';
 
-const CLI_PATH = path.resolve(__dirname, '../../../bin/upload-symbols.js');
+const CLI_PATH = path.resolve(__dirname, '..', '..', '..', 'bin', 'upload-symbols.js');
+const NODE = process.execPath;
 
-function runCli(args: string, env: Record<string, string> = {}): { stdout: string; stderr: string; exitCode: number } {
-  const argv = args.split(/\s+/).filter(Boolean);
+function runCli(argv: string[], env: Record<string, string> = {}): { stdout: string; stderr: string; exitCode: number } {
   try {
-    const stdout = execFileSync(process.execPath, [CLI_PATH, ...argv], {
+    const stdout = execFileSync(NODE, [CLI_PATH, ...argv], {
       encoding: 'utf-8',
       env: { ...process.env, ...env },
       timeout: 10000,
@@ -24,7 +24,7 @@ function runCli(args: string, env: Record<string, string> = {}): { stdout: strin
 
 describe('upload-symbols CLI', () => {
   it('shows help with --help flag', () => {
-    const result = runCli('--help');
+    const result = runCli(['--help']);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Usage:');
     expect(result.stdout).toContain('--platform');
@@ -34,13 +34,13 @@ describe('upload-symbols CLI', () => {
   });
 
   it('shows help with -h flag', () => {
-    const result = runCli('-h');
+    const result = runCli(['-h']);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Usage:');
   });
 
   it('exits with error when database is missing', () => {
-    const result = runCli('upload-symbols', {
+    const result = runCli(['upload-symbols'], {
       BUGSPLAT_DATABASE: '',
       BUGSPLAT_CLIENT_ID: 'id',
       BUGSPLAT_CLIENT_SECRET: 'secret',
@@ -50,7 +50,7 @@ describe('upload-symbols CLI', () => {
   });
 
   it('exits with error when credentials are missing', () => {
-    const result = runCli('upload-symbols --database test-db', {
+    const result = runCli(['upload-symbols', '--database', 'test-db'], {
       BUGSPLAT_CLIENT_ID: '',
       BUGSPLAT_CLIENT_SECRET: '',
     });
@@ -59,7 +59,7 @@ describe('upload-symbols CLI', () => {
   });
 
   it('exits with error for unknown option', () => {
-    const result = runCli('--unknown-flag');
+    const result = runCli(['--unknown-flag']);
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('Unknown option');
   });

@@ -46,7 +46,12 @@ export interface BugSplatPostResult {
  * Configuration passed to the config plugin via app.json / app.config.js.
  */
 export interface BugSplatPluginOptions {
-  /** Enable automatic symbol upload for iOS (dSYMs) and Android (.so files) */
+  /**
+   * Enable automatic symbol upload for iOS (dSYMs) and Android (.so files).
+   * When enabled, `symbolUploadClientId` and `symbolUploadClientSecret` (or their
+   * corresponding env vars) must be set, and `database` must be provided either
+   * here or via `BUGSPLAT_DATABASE`. Requires `@bugsplat/symbol-upload` to be installed.
+   */
   enableSymbolUpload?: boolean;
   /** BugSplat API client ID for symbol upload (or set BUGSPLAT_CLIENT_ID env var) */
   symbolUploadClientId?: string;
