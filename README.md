@@ -22,12 +22,6 @@ BugSplat's `@bugsplat/expo` package provides crash and error reporting for Expo 
 npx expo install @bugsplat/expo
 ```
 
-For web error boundary support, also install the optional peer dependency:
-
-```sh
-npm install @bugsplat/react
-```
-
 ## Configuration
 
 Add the config plugin to your `app.json` or `app.config.js`:
@@ -65,40 +59,7 @@ The plugin sets up required native permissions (Android) and optionally configur
 
 ### Symbol Upload
 
-Production crash reports require debug symbols to produce readable stack traces. Enable automatic symbol uploads by setting `enableSymbolUpload` in your plugin config:
-
-```json
-{
-  "expo": {
-    "plugins": [
-      ["@bugsplat/expo", {
-        "database": "your-database",
-        "enableSymbolUpload": true,
-        "symbolUploadClientId": "your-client-id",
-        "symbolUploadClientSecret": "your-client-secret"
-      }]
-    ]
-  }
-}
-```
-
-Credentials can also be provided via environment variables (`BUGSPLAT_CLIENT_ID`, `BUGSPLAT_CLIENT_SECRET`) so they don't need to be committed to source control.
-
-When enabled, this configures:
-- **iOS**: An Xcode build phase that uploads `.dSYM` files on Release builds
-- **Android**: A Gradle task (`uploadBugsplatSymbols`) that uploads `.so` files converted to `.sym` format
-
-For JavaScript source maps, use the standalone CLI after running `npx expo export`.
-
-Both use [`@bugsplat/symbol-upload`](https://github.com/BugSplat-Git/symbol-upload) via `npx`. Install it as a dev dependency for best results:
-
-```sh
-npm install --save-dev @bugsplat/symbol-upload
-```
-
-#### Standalone CLI
-
-For CI/CD pipelines or EAS Build workflows, you can upload symbols manually:
+Production crash reports require debug symbols to produce readable stack traces. Use the built-in CLI to upload symbols for iOS, Android, and JavaScript source maps:
 
 ```sh
 # Upload iOS symbols (dSYMs)
@@ -122,7 +83,15 @@ npx @bugsplat/expo upload-symbols \
   --directory dist
 ```
 
-The CLI auto-detects build output paths (Xcode DerivedData, Gradle build intermediates, `dist/` for source maps) and reads configuration from `app.json`. Run `npx @bugsplat/expo upload-symbols --help` for all options.
+The CLI auto-detects build output paths (Xcode DerivedData, Gradle build intermediates, `dist/` for source maps) and reads configuration from `app.json`. Credentials can be provided via environment variables (`BUGSPLAT_CLIENT_ID`, `BUGSPLAT_CLIENT_SECRET`, `BUGSPLAT_DATABASE`) so they don't need to be committed to source control.
+
+This requires [`@bugsplat/symbol-upload`](https://github.com/BugSplat-Git/symbol-upload). Install it as a dev dependency:
+
+```sh
+npm install --save-dev @bugsplat/symbol-upload
+```
+
+Run `npx @bugsplat/expo upload-symbols --help` for all options.
 
 ## Usage
 
@@ -176,7 +145,9 @@ import { crash } from '@bugsplat/expo';
 crash();
 ```
 
-### Web Error Boundary (requires `@bugsplat/react`)
+### Error Boundary
+
+Wrap your component tree in `<ErrorBoundary>` to catch React render errors and report them to BugSplat automatically. This works on all platforms — iOS, Android, and Web.
 
 ```tsx
 import { ErrorBoundary } from '@bugsplat/expo';
@@ -189,6 +160,23 @@ function App() {
   );
 }
 ```
+
+The fallback prop accepts a React node or a render function:
+
+```tsx
+<ErrorBoundary
+  fallback={({ error, resetErrorBoundary }) => (
+    <View>
+      <Text>{error.message}</Text>
+      <Button title="Try again" onPress={resetErrorBoundary} />
+    </View>
+  )}
+>
+  <MyComponent />
+</ErrorBoundary>
+```
+
+On **iOS and Android**, the ErrorBoundary reports errors through the native Expo module. On **Web**, it uses `@bugsplat/react`.
 
 ## How It Works
 

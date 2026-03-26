@@ -81,7 +81,6 @@ describe('withBugsplatAndroid', () => {
   });
 
   it('does not duplicate Gradle task on repeated invocations', () => {
-    // Simulate a build.gradle that already has the task
     mockWithAppBuildGradle.mockImplementationOnce((config: any, callback: any) => {
       return callback({
         ...config,
@@ -92,7 +91,6 @@ describe('withBugsplatAndroid', () => {
       enableSymbolUpload: true,
       database: 'my-db',
     });
-    // Should not append a second copy
     const matches = result.modResults.contents.match(/uploadBugsplatSymbols/g);
     expect(matches).toHaveLength(1);
   });
@@ -103,14 +101,13 @@ describe('buildAndroidGradleTask', () => {
     const task = buildAndroidGradleTask({ database: 'my-db' });
     expect(task).toContain('tasks.register("uploadBugsplatSymbols", Exec)');
     expect(task).toContain('def bsDatabase');
-    // Should NOT contain Kotlin DSL syntax
     expect(task).not.toContain('Exec::class');
     expect(task).not.toContain('val ');
   });
 
-  it('uses npx @bugsplat/symbol-upload with -m flag', () => {
+  it('uses npx --yes @bugsplat/symbol-upload with -m flag', () => {
     const task = buildAndroidGradleTask({ database: 'my-db' });
-    expect(task).toContain('@bugsplat/symbol-upload');
+    expect(task).toContain('"npx", "--yes", "@bugsplat/symbol-upload"');
     expect(task).toContain('"-m"');
   });
 

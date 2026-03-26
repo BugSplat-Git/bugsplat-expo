@@ -48,7 +48,7 @@ export const buildAndroidGradleTask = (props: BugSplatPluginOptions): string => 
     '    def appVersion = android.defaultConfig.versionName ?: "1.0.0"',
     '    def soDir = layout.buildDirectory.dir("intermediates/merged_native_libs").get().asFile.absolutePath',
     '',
-    '    commandLine("npx", "@bugsplat/symbol-upload",',
+    '    commandLine("npx", "--yes", "@bugsplat/symbol-upload",',
     '        "-b", bsDatabase,',
     '        "-a", appName,',
     '        "-v", appVersion,',

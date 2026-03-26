@@ -55,7 +55,7 @@ describe('withBugsplatIos', () => {
 });
 
 describe('buildIosUploadScript', () => {
-  it('uses npx @bugsplat/symbol-upload with --yes flag', () => {
+  it('uses npx --yes @bugsplat/symbol-upload', () => {
     const script = buildIosUploadScript({
       database: 'my-db',
       symbolUploadClientId: 'test-id',

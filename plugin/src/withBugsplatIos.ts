@@ -48,7 +48,6 @@ const withBugsplatSymbolUpload: ConfigPlugin<BugSplatPluginOptions> = (config, p
     const project = config.modResults;
     const shellScriptPhases = project.hash.project.objects['PBXShellScriptBuildPhase'] || {};
 
-    // Check for existing build phase (current name or legacy name from older versions)
     const alreadyExists = Object.values(shellScriptPhases).some(
       (phase: any) =>
         typeof phase === 'object' && phase.name === JSON.stringify(BUILD_PHASE_NAME)

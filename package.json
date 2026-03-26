@@ -1,11 +1,11 @@
 {
   "name": "@bugsplat/expo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "BugSplat crash and error reporting for Expo apps across iOS, Android, and Web",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "bin": {
-    "bugsplat-expo": "./bin/upload-symbols.js"
+    "@bugsplat/expo": "./bin/upload-symbols.js"
   },
   "scripts": {
     "build": "expo-module build",
@@ -37,13 +37,12 @@
   "license": "MIT",
   "homepage": "https://github.com/BugSplat-Git/bugsplat-expo#readme",
   "dependencies": {
-    "bugsplat": "^8.0.0",
+    "@bugsplat/react": "^2.0.0",
     "expo": "~55.0.8",
     "react": "19.2.0",
     "react-native": "0.83.2"
   },
   "devDependencies": {
-    "@bugsplat/react": "^2.0.0",
     "@types/react": "~19.1.1",
     "expo": "^55.0.8",
     "expo-module-scripts": "^55.0.2",
@@ -58,9 +57,6 @@
     "@bugsplat/symbol-upload": "*"
   },
   "peerDependenciesMeta": {
-    "@bugsplat/react": {
-      "optional": true
-    },
     "@bugsplat/symbol-upload": {
       "optional": true
     }
