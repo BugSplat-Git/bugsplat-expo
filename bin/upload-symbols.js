@@ -150,6 +150,7 @@ function findSourceMapDir() {
 
 function runUpload({ database, application, version, clientId, clientSecret, directory, filePattern, dumpSyms }) {
   const args = [
+    '--yes',
     '@bugsplat/symbol-upload',
     '-b', database,
     '-a', application,

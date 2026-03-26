@@ -26,6 +26,8 @@ npx expo install @bugsplat/expo
 
 Add the config plugin to your `app.json` or `app.config.js`:
 
+Credentials for symbol upload can be set via environment variables (`BUGSPLAT_CLIENT_ID`, `BUGSPLAT_CLIENT_SECRET`) or in the plugin config.
+
 ```json
 {
   "expo": {
