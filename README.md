@@ -61,39 +61,38 @@ The plugin sets up required native permissions (Android) and optionally configur
 
 ### Symbol Upload
 
-Production crash reports require debug symbols to produce readable stack traces. Use the built-in CLI to upload symbols for iOS, Android, and JavaScript source maps:
+Production crash reports require debug symbols to produce readable stack traces. When `enableSymbolUpload` is set, the config plugin automatically uploads symbols during iOS and Android release builds.
 
-```sh
-# Upload iOS symbols (dSYMs)
-npx @bugsplat/expo upload-symbols --platform ios
-
-# Upload Android symbols (.so files)
-npx @bugsplat/expo upload-symbols --platform android
-
-# Upload JavaScript source maps
-npx @bugsplat/expo upload-symbols --platform js
-
-# Upload everything (ios + android + js)
-npx @bugsplat/expo upload-symbols
-
-# With explicit options
-npx @bugsplat/expo upload-symbols \
-  --database your-database \
-  --client-id your-client-id \
-  --client-secret your-client-secret \
-  --platform js \
-  --directory dist
-```
-
-The CLI auto-detects build output paths (Xcode DerivedData, Gradle build intermediates, `dist/` for source maps) and reads configuration from `app.json`. Credentials can be provided via environment variables (`BUGSPLAT_CLIENT_ID`, `BUGSPLAT_CLIENT_SECRET`, `BUGSPLAT_DATABASE`) so they don't need to be committed to source control.
-
-This requires [`@bugsplat/symbol-upload`](https://github.com/BugSplat-Git/symbol-upload). Install it as a dev dependency:
+For manual uploads or CI/CD workflows, use [`@bugsplat/symbol-upload`](https://github.com/BugSplat-Git/symbol-upload) directly:
 
 ```sh
 npm install --save-dev @bugsplat/symbol-upload
 ```
 
-Run `npx @bugsplat/expo upload-symbols --help` for all options.
+```sh
+# Upload iOS dSYMs
+npx @bugsplat/symbol-upload \
+  -b your-database -a YourApp -v 1.0.0 \
+  -i $BUGSPLAT_CLIENT_ID -s $BUGSPLAT_CLIENT_SECRET \
+  -d /path/to/build/Products/Release-iphoneos \
+  -f "**/*.dSYM"
+
+# Upload Android .so files (converted to .sym)
+npx @bugsplat/symbol-upload \
+  -b your-database -a YourApp -v 1.0.0 \
+  -i $BUGSPLAT_CLIENT_ID -s $BUGSPLAT_CLIENT_SECRET \
+  -d android/app/build/intermediates/merged_native_libs \
+  -f "**/*.so" -m
+
+# Upload JavaScript source maps (after npx expo export --source-maps)
+npx @bugsplat/symbol-upload \
+  -b your-database -a YourApp -v 1.0.0 \
+  -i $BUGSPLAT_CLIENT_ID -s $BUGSPLAT_CLIENT_SECRET \
+  -d dist \
+  -f "**/*.map"
+```
+
+Run `npx @bugsplat/symbol-upload --help` for all options.
 
 ## Usage
 
