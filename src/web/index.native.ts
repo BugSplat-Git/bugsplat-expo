@@ -1,7 +1,4 @@
-// Native stubs — these are web-only features from @bugsplat/react.
-// They are not available on iOS or Android.
-
-export const ErrorBoundary = null;
+export { NativeErrorBoundary as ErrorBoundary } from '../NativeErrorBoundary';
 
 export function useErrorHandler() {
   throw new Error('useErrorHandler is only available on web');
