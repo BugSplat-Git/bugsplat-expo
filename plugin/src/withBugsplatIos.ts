@@ -1,7 +1,6 @@
 import { ConfigPlugin, withInfoPlist, withXcodeProject } from 'expo/config-plugins';
 import type { BugSplatPluginOptions } from './types';
 
-const LEGACY_BUILD_PHASE_NAME = 'Upload dSYMs to BugSplat';
 const BUILD_PHASE_NAME = 'Upload symbols to BugSplat';
 
 export const withBugsplatIos: ConfigPlugin<BugSplatPluginOptions> = (config, props) => {
@@ -52,9 +51,7 @@ const withBugsplatSymbolUpload: ConfigPlugin<BugSplatPluginOptions> = (config, p
     // Check for existing build phase (current name or legacy name from older versions)
     const alreadyExists = Object.values(shellScriptPhases).some(
       (phase: any) =>
-        typeof phase === 'object' &&
-        (phase.name === JSON.stringify(BUILD_PHASE_NAME) ||
-          phase.name === JSON.stringify(LEGACY_BUILD_PHASE_NAME))
+        typeof phase === 'object' && phase.name === JSON.stringify(BUILD_PHASE_NAME)
     );
 
     if (!alreadyExists) {
