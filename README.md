@@ -30,7 +30,10 @@ Add the config plugin to your `app.json` or `app.config.js`:
 {
   "expo": {
     "plugins": [
-      "@bugsplat/expo",
+      ["@bugsplat/expo", {
+        "database": "your-database",
+        "enableSymbolUpload": true
+      }],
       ["expo-build-properties", {
         "android": {
           "minSdkVersion": 26
@@ -43,15 +46,16 @@ Add the config plugin to your `app.json` or `app.config.js`:
 
 The `bugsplat-android` SDK requires Android minSdk 26 (Android 8.0+). If your project's minSdk is already >= 26, the `expo-build-properties` plugin is not needed.
 
-The plugin sets up required native permissions (Android) and optionally configures dSYM uploads (iOS). Configure your database in code via `init()`.
+The plugin sets up required native permissions (Android) and optionally configures automatic symbol uploads for both platforms. Configure your database in code via `init()`.
 
 ### Plugin Options
 
 | Option | Required | Description |
 |--------|----------|-------------|
-| `enableDsymUpload` | No | Add an Xcode build phase to upload dSYMs on release builds |
-| `symbolUploadClientId` | No | BugSplat API client ID for symbol upload |
-| `symbolUploadClientSecret` | No | BugSplat API client secret for symbol upload |
+| `database` | No | BugSplat database name (can also be set via `init()` or `BUGSPLAT_DATABASE` env var) |
+| `enableSymbolUpload` | No | Enable automatic symbol upload for iOS (dSYMs) and Android (.so files) |
+| `symbolUploadClientId` | No | BugSplat API client ID (or set `BUGSPLAT_CLIENT_ID` env var) |
+| `symbolUploadClientSecret` | No | BugSplat API client secret (or set `BUGSPLAT_CLIENT_SECRET` env var) |
 
 ### Symbol Upload
 
