@@ -61,6 +61,42 @@ The plugin sets up required native permissions (Android) and optionally configur
 | `symbolUploadClientId` | No | BugSplat API client ID for symbol upload |
 | `symbolUploadClientSecret` | No | BugSplat API client secret for symbol upload |
 
+### Symbol Upload
+
+Production crash reports require debug symbols to produce readable stack traces. Use the built-in CLI to upload symbols for iOS, Android, and JavaScript source maps:
+
+```sh
+# Upload iOS symbols (dSYMs)
+npx @bugsplat/expo upload-symbols --platform ios
+
+# Upload Android symbols (.so files)
+npx @bugsplat/expo upload-symbols --platform android
+
+# Upload JavaScript source maps
+npx @bugsplat/expo upload-symbols --platform js
+
+# Upload everything (ios + android + js)
+npx @bugsplat/expo upload-symbols
+
+# With explicit options
+npx @bugsplat/expo upload-symbols \
+  --database your-database \
+  --client-id your-client-id \
+  --client-secret your-client-secret \
+  --platform js \
+  --directory dist
+```
+
+The CLI auto-detects build output paths (Xcode DerivedData, Gradle build intermediates, `dist/` for source maps) and reads configuration from `app.json`. Credentials can be provided via environment variables (`BUGSPLAT_CLIENT_ID`, `BUGSPLAT_CLIENT_SECRET`, `BUGSPLAT_DATABASE`) so they don't need to be committed to source control.
+
+This requires [`@bugsplat/symbol-upload`](https://github.com/BugSplat-Git/symbol-upload). Install it as a dev dependency:
+
+```sh
+npm install --save-dev @bugsplat/symbol-upload
+```
+
+Run `npx @bugsplat/expo upload-symbols --help` for all options.
+
 ## Usage
 
 ### Initialize
