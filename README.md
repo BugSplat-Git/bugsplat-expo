@@ -22,14 +22,6 @@ BugSplat's `@bugsplat/expo` package provides crash and error reporting for Expo 
 npx expo install @bugsplat/expo
 ```
 
-For web `ErrorBoundary` support, also install the optional peer dependency:
-
-```sh
-npm install @bugsplat/react
-```
-
-The `ErrorBoundary` works on iOS and Android without this dependency.
-
 ## Configuration
 
 Add the config plugin to your `app.json` or `app.config.js`:
@@ -180,7 +172,7 @@ The fallback prop accepts a React node or a render function:
 </ErrorBoundary>
 ```
 
-On **iOS and Android**, the ErrorBoundary reports errors through the native Expo module. On **Web**, it uses `@bugsplat/react` (install it as an optional peer dependency for web support).
+On **iOS and Android**, the ErrorBoundary reports errors through the native Expo module. On **Web**, it uses `@bugsplat/react`.
 
 ## How It Works
 
