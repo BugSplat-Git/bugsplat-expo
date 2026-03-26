@@ -63,4 +63,11 @@ describe('upload-symbols CLI', () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('Unknown option');
   });
+
+  it('help text lists all platform options including js', () => {
+    const result = runCli(['--help']);
+    expect(result.stdout).toContain('ios');
+    expect(result.stdout).toContain('android');
+    expect(result.stdout).toContain('js');
+  });
 });

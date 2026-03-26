@@ -88,6 +88,8 @@ When enabled, this configures:
 - **iOS**: An Xcode build phase that uploads `.dSYM` files on Release builds
 - **Android**: A Gradle task (`uploadBugsplatSymbols`) that uploads `.so` files converted to `.sym` format
 
+For JavaScript source maps, use the standalone CLI after running `npx expo export`.
+
 Both use [`@bugsplat/symbol-upload`](https://github.com/BugSplat-Git/symbol-upload) via `npx`. Install it as a dev dependency for best results:
 
 ```sh
@@ -99,13 +101,16 @@ npm install --save-dev @bugsplat/symbol-upload
 For CI/CD pipelines or EAS Build workflows, you can upload symbols manually:
 
 ```sh
-# Upload iOS symbols
+# Upload iOS symbols (dSYMs)
 npx @bugsplat/expo upload-symbols --platform ios
 
-# Upload Android symbols
+# Upload Android symbols (.so files)
 npx @bugsplat/expo upload-symbols --platform android
 
-# Upload both platforms
+# Upload JavaScript source maps
+npx @bugsplat/expo upload-symbols --platform js
+
+# Upload everything (ios + android + js)
 npx @bugsplat/expo upload-symbols
 
 # With explicit options
@@ -113,11 +118,11 @@ npx @bugsplat/expo upload-symbols \
   --database your-database \
   --client-id your-client-id \
   --client-secret your-client-secret \
-  --platform ios \
-  --directory /path/to/dsyms
+  --platform js \
+  --directory dist
 ```
 
-The CLI auto-detects build output paths and reads configuration from `app.json`. Run `npx @bugsplat/expo upload-symbols --help` for all options.
+The CLI auto-detects build output paths (Xcode DerivedData, Gradle build intermediates, `dist/` for source maps) and reads configuration from `app.json`. Run `npx @bugsplat/expo upload-symbols --help` for all options.
 
 ## Usage
 

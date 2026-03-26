@@ -10,7 +10,7 @@ const USAGE = `Usage: npx @bugsplat/expo upload-symbols [options]
 Upload debug symbols to BugSplat for symbolicated crash reports.
 
 Options:
-  --platform <ios|android>   Platform to upload symbols for (default: both)
+  --platform <type>          Platform to upload: ios, android, js, or all (default: all)
   --database <name>          BugSplat database name (or set BUGSPLAT_DATABASE)
   --application <name>       Application name (default: from app.json)
   --version <version>        Application version (default: from app.json)
@@ -134,6 +134,20 @@ function findAndroidSymbolDir() {
   return null;
 }
 
+function findSourceMapDir() {
+  const candidates = [
+    path.resolve('dist'),
+    path.resolve('android/app/build/generated/sourcemaps'),
+    path.resolve('ios/build/sourcemaps'),
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
+  return null;
+}
+
 function runUpload({ database, application, version, clientId, clientSecret, directory, filePattern, dumpSyms }) {
   const args = [
     '@bugsplat/symbol-upload',
@@ -185,7 +199,9 @@ function main() {
     process.exit(1);
   }
 
-  const platforms = args.platform ? [args.platform] : ['ios', 'android'];
+  const platforms = args.platform
+    ? args.platform === 'all' ? ['ios', 'android', 'js'] : [args.platform]
+    : ['ios', 'android', 'js'];
   let success = true;
 
   for (const platform of platforms) {
@@ -211,8 +227,18 @@ function main() {
       if (!runUpload({ database, application, version, clientId, clientSecret, directory, filePattern: '**/*.so', dumpSyms: true })) {
         success = false;
       }
+    } else if (platform === 'js') {
+      const directory = args.directory || findSourceMapDir();
+      if (!directory) {
+        console.error('Could not find source maps. Use --directory to specify the source map path, or run "npx expo export" first.');
+        success = false;
+        continue;
+      }
+      if (!runUpload({ database, application, version, clientId, clientSecret, directory, filePattern: '**/*.map', dumpSyms: false })) {
+        success = false;
+      }
     } else {
-      console.error(`Unknown platform: ${platform}. Use "ios" or "android".`);
+      console.error(`Unknown platform: ${platform}. Use "ios", "android", or "js".`);
       success = false;
     }
   }
