@@ -12,12 +12,11 @@ const mockBugSplatInstance = {
   setDefaultDescription: mockSetDefaultDescription,
 };
 
-const mockBugSplatConstructor = jest.fn().mockImplementation(() => mockBugSplatInstance);
-
-jest.mock('bugsplat', () => ({
-  BugSplat: mockBugSplatConstructor,
+jest.mock('@bugsplat/react', () => ({
+  init: jest.fn((_opts: any) => (initializer: any) => initializer(mockBugSplatInstance)),
 }));
 
+import { init as initReact } from '@bugsplat/react';
 import {
   init,
   post,
@@ -32,9 +31,13 @@ describe('BugsplatExpo (web)', () => {
   });
 
   describe('init', () => {
-    it('creates a BugSplat instance', async () => {
+    it('initializes via @bugsplat/react', async () => {
       await init('test-db', 'MyApp', '1.0.0');
-      expect(mockBugSplatConstructor).toHaveBeenCalledWith('test-db', 'MyApp', '1.0.0');
+      expect(initReact).toHaveBeenCalledWith({
+        database: 'test-db',
+        application: 'MyApp',
+        version: '1.0.0',
+      });
     });
 
     it('configures options on the instance', async () => {

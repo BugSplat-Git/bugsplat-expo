@@ -4,9 +4,6 @@
   "description": "BugSplat crash and error reporting for Expo apps across iOS, Android, and Web",
   "main": "build/index.js",
   "types": "build/index.d.ts",
-  "bin": {
-    "@bugsplat/expo": "./bin/upload-symbols.js"
-  },
   "scripts": {
     "build": "expo-module build",
     "build:plugin": "tsc --project plugin/tsconfig.json",
@@ -44,6 +41,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.1",
+    "react-dom": "19.2.0",
     "expo": "^55.0.8",
     "expo-module-scripts": "^55.0.2",
     "jest-expo": "^55.0.11",
