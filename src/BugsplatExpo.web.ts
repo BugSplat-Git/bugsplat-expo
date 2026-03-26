@@ -1,4 +1,5 @@
-import { BugSplat } from 'bugsplat';
+import type { BugSplat } from '@bugsplat/react';
+import { init as initReact } from '@bugsplat/react';
 
 import type {
   BugSplatInitOptions,
@@ -27,20 +28,22 @@ export async function init(
   version: string,
   options?: BugSplatInitOptions
 ): Promise<void> {
-  instance = new BugSplat(database, application, version);
+  initReact({ database, application, version })((client) => {
+    instance = client;
 
-  if (options?.appKey) {
-    instance.setDefaultAppKey(options.appKey);
-  }
-  if (options?.userName) {
-    instance.setDefaultUser(options.userName);
-  }
-  if (options?.userEmail) {
-    instance.setDefaultEmail(options.userEmail);
-  }
-  if (options?.description) {
-    instance.setDefaultDescription(options.description);
-  }
+    if (options?.appKey) {
+      client.setDefaultAppKey(options.appKey);
+    }
+    if (options?.userName) {
+      client.setDefaultUser(options.userName);
+    }
+    if (options?.userEmail) {
+      client.setDefaultEmail(options.userEmail);
+    }
+    if (options?.description) {
+      client.setDefaultDescription(options.description);
+    }
+  });
 }
 
 /**

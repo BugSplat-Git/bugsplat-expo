@@ -56,6 +56,7 @@ yarn-error.log
 # Expo
 .expo/
 example/.expo/
+example/dist/
 
 # Generated native projects (recreated by `npx expo prebuild`)
 example/ios/
