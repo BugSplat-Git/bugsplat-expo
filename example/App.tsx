@@ -91,12 +91,12 @@ export default function App() {
             <Button
               title="Test Crash"
               onPress={handleCrash}
-              color={nativeAvailable ? 'red' : 'gray'}
-              disabled={!nativeAvailable}
+              color={nativeAvailable && !__DEV__ ? 'red' : 'gray'}
+              disabled={!nativeAvailable || __DEV__}
             />
-            {!nativeAvailable && (
+            {(!nativeAvailable || __DEV__) && (
               <Text style={styles.disabledHint}>
-                Native crash testing requires a development build
+                Native crash testing requires a release build
               </Text>
             )}
           </View>
@@ -173,6 +173,7 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 12,
     marginTop: 4,
+    textAlign: 'center',
   },
   errorText: {
     color: 'red',

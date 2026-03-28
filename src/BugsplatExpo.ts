@@ -42,6 +42,12 @@ export async function init(
     if (options?.userName) client.setDefaultUser(options.userName);
     if (options?.userEmail) client.setDefaultEmail(options.userEmail);
     if (options?.description) client.setDefaultDescription(options.description);
+    if (options?.attributes) {
+      Object.assign(jsAttributes, options.attributes);
+    }
+    if (Object.keys(jsAttributes).length > 0) {
+      client.setDefaultAttributes(jsAttributes);
+    }
   });
 }
 

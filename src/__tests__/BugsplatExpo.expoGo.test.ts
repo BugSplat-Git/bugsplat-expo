@@ -65,17 +65,31 @@ describe('BugsplatExpo (Expo Go / JS fallback)', () => {
       expect(mockBugSplatInstance.setDefaultEmail).toHaveBeenCalledWith('alice@example.com');
       expect(mockBugSplatInstance.setDefaultDescription).toHaveBeenCalledWith('test desc');
     });
+
+    it('applies attributes from options during init', async () => {
+      await init('test-db', 'MyApp', '1.0.0', {
+        attributes: { env: 'production', region: 'us-east' },
+      });
+      expect(mockBugSplatInstance.setDefaultAttributes).toHaveBeenCalledWith(
+        expect.objectContaining({ env: 'production', region: 'us-east' })
+      );
+    });
+
+    it('applies pre-init setAttribute calls during init', async () => {
+      setAttribute('early', 'value');
+      await init('test-db', 'MyApp', '1.0.0');
+      expect(mockBugSplatInstance.setDefaultAttributes).toHaveBeenCalledWith(
+        expect.objectContaining({ early: 'value' })
+      );
+    });
   });
 
   describe('post', () => {
     it('returns failure if init was not called', async () => {
-      // Reset the module to clear jsClient - use a fresh import
-      // Since jsClient is module-level state and init was called in prior tests,
-      // we test the un-initialized path by testing post before init in isolation
-      // For this test we rely on the error path
-      const result = await post(new Error('test'));
-      // After init was called in earlier tests, jsClient is set
-      expect(result.success).toBeDefined();
+      jest.resetModules();
+      const { post: isolatedPost } = await import('../BugsplatExpo');
+      const result = await isolatedPost(new Error('test'));
+      expect(result).toEqual({ success: false, error: expect.any(String) });
     });
 
     it('posts error via JS client after init', async () => {
@@ -137,7 +151,9 @@ describe('BugsplatExpo (Expo Go / JS fallback)', () => {
     it('sets attributes on JS client after init', async () => {
       await init('test-db', 'MyApp', '1.0.0');
       setAttribute('env', 'staging');
-      expect(mockBugSplatInstance.setDefaultAttributes).toHaveBeenCalledWith({ env: 'staging' });
+      expect(mockBugSplatInstance.setDefaultAttributes).toHaveBeenCalledWith(
+        expect.objectContaining({ env: 'staging' })
+      );
     });
 
     it('accumulates multiple attributes', async () => {

@@ -99,7 +99,7 @@ describe('withBugsplatAndroid', () => {
 describe('buildAndroidGradleTask', () => {
   it('registers uploadBugsplatSymbols task using Groovy syntax', () => {
     const task = buildAndroidGradleTask({ database: 'my-db' });
-    expect(task).toContain('tasks.register("uploadBugsplatSymbols", Exec)');
+    expect(task).toContain('tasks.register("uploadBugsplatSymbols")');
     expect(task).toContain('def bsDatabase');
     expect(task).not.toContain('Exec::class');
     expect(task).not.toContain('val ');
@@ -136,5 +136,26 @@ describe('buildAndroidGradleTask', () => {
   it('uploads .so files', () => {
     const task = buildAndroidGradleTask({ database: 'my-db' });
     expect(task).toContain('**/*.so');
+  });
+
+  it('warns and skips when npx is not found', () => {
+    const task = buildAndroidGradleTask({ database: 'my-db' });
+    expect(task).toContain('["which", "npx"].execute()');
+    expect(task).toContain('npx not found');
+    expect(task).toContain('skipping symbol upload');
+  });
+
+  it('warns and skips when client credentials are not set', () => {
+    const task = buildAndroidGradleTask({ database: 'my-db' });
+    expect(task).toContain('if (!bsClientId || !bsClientSecret)');
+    expect(task).toContain('client credentials not set');
+    expect(task).toContain('skipping symbol upload');
+  });
+
+  it('wraps exec in doLast block for graceful skipping', () => {
+    const task = buildAndroidGradleTask({ database: 'my-db' });
+    expect(task).toContain('doLast {');
+    expect(task).toContain('exec {');
+    expect(task).not.toContain('tasks.register("uploadBugsplatSymbols", Exec)');
   });
 });
