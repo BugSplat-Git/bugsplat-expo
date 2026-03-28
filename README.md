@@ -218,6 +218,12 @@ Set a custom attribute. Note: not supported on web.
 
 Trigger a test crash to verify integration.
 
+## Expo Go
+
+`@bugsplat/expo` works in Expo Go with reduced functionality. Since native modules are not available in Expo Go, native crash reporting is disabled. JS error reporting (`init()`, `post()`, `setUser()`, `setAttribute()`) still works via an HTTP fallback. A warning is logged at `init()` to let you know native crash reporting is inactive.
+
+To test full native crash reporting, use a **release build** (see [Testing Native Crashes](#testing-native-crashes) below). Development builds include a debugger that intercepts crashes before BugSplat can capture them.
+
 ## Testing Native Crashes
 
 To test native crash reporting, you must run a **release build** — the debugger intercepts crashes in debug builds.
