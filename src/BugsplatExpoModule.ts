@@ -1,4 +1,4 @@
-import { requireNativeModule } from 'expo';
+import { requireOptionalNativeModule } from 'expo';
 
 export interface BugsplatExpoNativeModule {
   init(
@@ -17,4 +17,4 @@ export interface BugsplatExpoNativeModule {
   crash(): void;
 }
 
-export default requireNativeModule<BugsplatExpoNativeModule>('BugsplatExpo');
+export default requireOptionalNativeModule<BugsplatExpoNativeModule>('BugsplatExpo');

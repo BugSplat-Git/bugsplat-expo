@@ -11,6 +11,11 @@ jest.mock('../BugsplatExpoModule', () => ({
   default: mockModule,
 }));
 
+const mockInitReact = jest.fn();
+jest.mock('@bugsplat/react', () => ({
+  init: mockInitReact,
+}));
+
 import { init, post, setUser, setAttribute, crash } from '../BugsplatExpo';
 
 describe('BugsplatExpo (native)', () => {
@@ -27,6 +32,11 @@ describe('BugsplatExpo (native)', () => {
         '1.0.0',
         undefined
       );
+    });
+
+    it('does not use JS fallback', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      expect(mockInitReact).not.toHaveBeenCalled();
     });
 
     it('passes options to native init', async () => {
