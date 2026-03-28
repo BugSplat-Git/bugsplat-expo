@@ -30,17 +30,21 @@ Pod::Spec.new do |s|
       curl -sL -o BugSplat.xcframework.zip "https://github.com/BugSplat-Git/bugsplat-apple/releases/download/v3.1.0/BugSplat.xcframework.zip"
       unzip -o BugSplat.xcframework.zip -d Frameworks
       rm -f BugSplat.xcframework.zip
-      # Remove non-iOS slices — macOS uses Versions/A/ bundle layout which
-      # CocoaPods misidentifies as static, causing a "contains both static
-      # and dynamic frameworks" error.
-      rm -rf Frameworks/BugSplat.xcframework/macos-*
-      rm -rf Frameworks/BugSplat.xcframework/tvos-*
-      # Remove plist entries in reverse order: macos(4), tvos-sim(3), tvos(2)
-      /usr/libexec/PlistBuddy \
-        -c "Delete :AvailableLibraries:4" \
-        -c "Delete :AvailableLibraries:3" \
-        -c "Delete :AvailableLibraries:2" \
-        Frameworks/BugSplat.xcframework/Info.plist
+    fi
+    # Remove non-iOS slices — macOS uses Versions/A/ bundle layout which
+    # CocoaPods misidentifies as static, causing a "contains both static
+    # and dynamic frameworks" error.
+    rm -rf Frameworks/BugSplat.xcframework/macos-*
+    rm -rf Frameworks/BugSplat.xcframework/tvos-*
+    PLIST_PATH="Frameworks/BugSplat.xcframework/Info.plist"
+    if [ -f "$PLIST_PATH" ]; then
+      count=$(/usr/libexec/PlistBuddy -c "Print :AvailableLibraries" "$PLIST_PATH" 2>/dev/null | grep -c "Dict")
+      for ((i=count-1; i>=0; i--)); do
+        platform=$(/usr/libexec/PlistBuddy -c "Print :AvailableLibraries:$i:SupportedPlatform" "$PLIST_PATH" 2>/dev/null || echo "")
+        if [ "$platform" != "ios" ]; then
+          /usr/libexec/PlistBuddy -c "Delete :AvailableLibraries:$i" "$PLIST_PATH" 2>/dev/null || true
+        fi
+      done
     fi
   CMD
 end
