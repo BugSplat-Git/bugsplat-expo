@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { init, post, setUser, setAttribute, crash, ErrorBoundary } from '@bugsplat/expo';
+import { init, post, setUser, setAttribute, crash, nativeAvailable, ErrorBoundary } from '@bugsplat/expo';
 import { Button, Image, ScrollView, Text, View, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -88,7 +88,17 @@ export default function App() {
             <Button title="Set Attribute" onPress={handleSetAttribute} />
           </View>
           <View style={styles.buttonRow}>
-            <Button title="Test Crash" onPress={handleCrash} color="red" />
+            <Button
+              title="Test Crash"
+              onPress={handleCrash}
+              color={nativeAvailable && !__DEV__ ? 'red' : 'gray'}
+              disabled={!nativeAvailable || __DEV__}
+            />
+            {(!nativeAvailable || __DEV__) && (
+              <Text style={styles.disabledHint}>
+                Native crash testing requires a release build
+              </Text>
+            )}
           </View>
         </View>
 
@@ -158,6 +168,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     fontSize: 16,
+  },
+  disabledHint: {
+    color: '#999',
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: 'center',
   },
   errorText: {
     color: 'red',
