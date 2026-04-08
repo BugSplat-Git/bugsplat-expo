@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { init, post, setUser, setAttribute, crash, nativeAvailable, ErrorBoundary } from '@bugsplat/expo';
+import { init, post, setUser, setAttribute, removeAttribute, crash, nativeAvailable, ErrorBoundary } from '@bugsplat/expo';
 import { Button, Image, ScrollView, Text, View, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -14,6 +14,9 @@ function BuggyComponent() {
 export default function App() {
   const [status, setStatus] = useState('Not initialized');
   const [database, setDatabase] = useState(DATABASE);
+  const [attrKey, setAttrKey] = useState('environment');
+  const [attrValue, setAttrValue] = useState('development');
+  const [activeAttributes, setActiveAttributes] = useState<Record<string, string>>({});
   const [triggerRenderError, setTriggerRenderError] = useState(false);
 
   const handleInit = async () => {
@@ -43,8 +46,23 @@ export default function App() {
   };
 
   const handleSetAttribute = () => {
-    setAttribute('environment', 'development');
-    setStatus('Attribute set!');
+    if (!attrKey.trim()) {
+      setStatus('Attribute key cannot be empty');
+      return;
+    }
+    setAttribute(attrKey, attrValue);
+    setActiveAttributes((prev) => ({ ...prev, [attrKey]: attrValue }));
+    setStatus(`Attribute set: ${attrKey} = ${attrValue}`);
+  };
+
+  const handleRemoveAttribute = (key: string) => {
+    removeAttribute(key);
+    setActiveAttributes((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setStatus(`Attribute removed: ${key}`);
   };
 
   const handleCrash = () => {
@@ -87,6 +105,32 @@ export default function App() {
           <View style={styles.buttonRow}>
             <Button title="Set Attribute" onPress={handleSetAttribute} />
           </View>
+        </View>
+
+        <View style={styles.group}>
+          <Text style={styles.groupHeader}>Attributes</Text>
+          <TextInput
+            style={styles.input}
+            value={attrKey}
+            onChangeText={setAttrKey}
+            placeholder="Attribute key"
+          />
+          <TextInput
+            style={[styles.input, { marginTop: 8 }]}
+            value={attrValue}
+            onChangeText={setAttrValue}
+            placeholder="Attribute value"
+          />
+          {Object.entries(activeAttributes).map(([key, value]) => (
+            <View key={key} style={styles.attributeRow}>
+              <Text style={styles.attributeText}>{key}: {value}</Text>
+              <Button title="Remove" onPress={() => handleRemoveAttribute(key)} color="red" />
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.group}>
+          <Text style={styles.groupHeader}>Native Crash</Text>
           <View style={styles.buttonRow}>
             <Button
               title="Test Crash"
@@ -168,6 +212,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     fontSize: 16,
+  },
+  attributeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingVertical: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  attributeText: {
+    fontSize: 14,
+    flex: 1,
   },
   disabledHint: {
     color: '#999',

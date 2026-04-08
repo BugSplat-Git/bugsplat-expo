@@ -115,6 +115,20 @@ export function setAttribute(key: string, value: string): void {
 }
 
 /**
+ * Remove a custom attribute so it is no longer included in crash reports.
+ */
+export function removeAttribute(key: string): void {
+  if (nativeAvailable) {
+    BugsplatExpoModule!.removeAttribute(key);
+    return;
+  }
+  delete jsAttributes[key];
+  if (jsClient) {
+    jsClient.setDefaultAttributes(jsAttributes);
+  }
+}
+
+/**
  * Trigger a test crash. Useful for verifying BugSplat integration.
  * Requires a development build with native modules — no-op in Expo Go.
  */

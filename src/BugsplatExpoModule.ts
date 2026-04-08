@@ -14,6 +14,7 @@ export interface BugsplatExpoNativeModule {
   ): Promise<{ success: boolean; error?: string }>;
   setUser(name: string, email: string): void;
   setAttribute(key: string, value: string): void;
+  removeAttribute(key: string): void;
   crash(): void;
 }
 
