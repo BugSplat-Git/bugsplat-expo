@@ -3,6 +3,7 @@ const mockModule = {
   post: jest.fn().mockResolvedValue({ success: true }),
   setUser: jest.fn(),
   setAttribute: jest.fn(),
+  removeAttribute: jest.fn(),
   crash: jest.fn(),
 };
 
@@ -16,7 +17,7 @@ jest.mock('@bugsplat/react', () => ({
   init: mockInitReact,
 }));
 
-import { init, post, setUser, setAttribute, crash } from '../BugsplatExpo';
+import { init, post, setUser, setAttribute, removeAttribute, crash } from '../BugsplatExpo';
 
 describe('BugsplatExpo (native)', () => {
   beforeEach(() => {
@@ -102,6 +103,13 @@ describe('BugsplatExpo (native)', () => {
     it('calls native setAttribute', () => {
       setAttribute('version', '2.0');
       expect(mockModule.setAttribute).toHaveBeenCalledWith('version', '2.0');
+    });
+  });
+
+  describe('removeAttribute', () => {
+    it('calls native removeAttribute', () => {
+      removeAttribute('version');
+      expect(mockModule.removeAttribute).toHaveBeenCalledWith('version');
     });
   });
 

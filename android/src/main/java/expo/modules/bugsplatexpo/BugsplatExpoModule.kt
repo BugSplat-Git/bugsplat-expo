@@ -140,32 +140,25 @@ class BugsplatExpoModule : Module() {
       attributes["userName"] = name
       attributes["userEmail"] = email
 
-      // Re-init BugSplatBridge with updated attributes (idempotent)
       if (initialized) {
-        BugSplatBridge.initBugSplat(
-          currentActivity,
-          database,
-          applicationName,
-          applicationVersion,
-          attributes,
-          attachments
-        )
+        BugSplatBridge.setAttribute("userName", name)
+        BugSplatBridge.setAttribute("userEmail", email)
       }
     }
 
     Function("setAttribute") { key: String, value: String ->
       attributes[key] = value
 
-      // Re-init BugSplatBridge with updated attributes (idempotent)
       if (initialized) {
-        BugSplatBridge.initBugSplat(
-          currentActivity,
-          database,
-          applicationName,
-          applicationVersion,
-          attributes,
-          attachments
-        )
+        BugSplatBridge.setAttribute(key, value)
+      }
+    }
+
+    Function("removeAttribute") { key: String ->
+      attributes.remove(key)
+
+      if (initialized) {
+        BugSplatBridge.removeAttribute(key)
       }
     }
 

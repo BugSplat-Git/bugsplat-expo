@@ -22,7 +22,7 @@ jest.mock('@bugsplat/react', () => ({
   init: mockInitReact,
 }));
 
-import { init, post, setUser, setAttribute, crash } from '../BugsplatExpo';
+import { init, post, setUser, setAttribute, removeAttribute, crash } from '../BugsplatExpo';
 
 describe('BugsplatExpo (Expo Go / JS fallback)', () => {
   let warnSpy: jest.SpyInstance;
@@ -162,6 +162,17 @@ describe('BugsplatExpo (Expo Go / JS fallback)', () => {
       setAttribute('build', '42');
       expect(mockBugSplatInstance.setDefaultAttributes).toHaveBeenLastCalledWith(
         expect.objectContaining({ env: 'staging', build: '42' })
+      );
+    });
+  });
+
+  describe('removeAttribute', () => {
+    it('removes attribute from JS client after init', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      setAttribute('env', 'staging');
+      removeAttribute('env');
+      expect(mockBugSplatInstance.setDefaultAttributes).toHaveBeenLastCalledWith(
+        expect.not.objectContaining({ env: 'staging' })
       );
     });
   });

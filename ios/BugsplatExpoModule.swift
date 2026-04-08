@@ -148,6 +148,11 @@ public class BugsplatExpoModule: Module {
       _ = BugSplat.shared().set(value, for: key)
     }
 
+    Function("removeAttribute") { (key: String) in
+      self.attributes.removeValue(forKey: key)
+      _ = BugSplat.shared().set(nil, for: key)
+    }
+
     Function("crash") {
       let array = NSArray()
       _ = array.object(at: 99)

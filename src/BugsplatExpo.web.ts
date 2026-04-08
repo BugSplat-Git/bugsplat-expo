@@ -96,6 +96,15 @@ export function setAttribute(key: string, _value: string): void {
 }
 
 /**
+ * Remove a custom attribute. No-op on web.
+ */
+export function removeAttribute(key: string): void {
+  console.warn(
+    `[@bugsplat/expo] removeAttribute('${key}') is not supported on web.`
+  );
+}
+
+/**
  * Trigger a test crash by throwing an unhandled error.
  */
 export function crash(): void {
