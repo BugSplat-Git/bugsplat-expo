@@ -27,7 +27,7 @@ Pod::Spec.new do |s|
   s.prepare_command = <<-CMD
     mkdir -p Frameworks
     if [ ! -d "Frameworks/BugSplat.xcframework" ]; then
-      curl -sL -o BugSplat.xcframework.zip "https://github.com/BugSplat-Git/bugsplat-apple/releases/download/v3.1.0/BugSplat.xcframework.zip"
+      curl -sL -o BugSplat.xcframework.zip "https://github.com/BugSplat-Git/bugsplat-apple/releases/download/v3.1.1/BugSplat.xcframework.zip"
       unzip -o BugSplat.xcframework.zip -d Frameworks
       rm -f BugSplat.xcframework.zip
     fi
