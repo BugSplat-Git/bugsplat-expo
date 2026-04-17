@@ -148,7 +148,7 @@ crash();
 
 ### Error Boundary
 
-Wrap your component tree in `<ErrorBoundary>` to catch React render errors and report them to BugSplat automatically. This works on all platforms — iOS, Android, and Web.
+Wrap your component tree in `<ErrorBoundary>` to catch React render errors and report them to BugSplat automatically. Works identically on iOS, Android, and Web.
 
 ```tsx
 import { ErrorBoundary } from '@bugsplat/expo';
@@ -177,7 +177,42 @@ The fallback prop accepts a React node or a render function:
 </ErrorBoundary>
 ```
 
-On **iOS and Android**, the ErrorBoundary reports errors through the native Expo module. On **Web**, it uses `@bugsplat/react`.
+### User Feedback
+
+Submit user feedback tied to your BugSplat database. Works on iOS, Android, and Web.
+
+Imperative API — call from anywhere after `init()`:
+
+```typescript
+import { postFeedback } from '@bugsplat/expo';
+
+const result = await postFeedback('Login button broken', {
+  description: 'Nothing happens when I tap sign in',
+});
+console.log(result.success ? `Feedback #${result.crashId} posted` : result.error);
+```
+
+React hook — useful for driving a feedback form with built-in loading/error state:
+
+```tsx
+import { useFeedback } from '@bugsplat/expo';
+
+function FeedbackForm() {
+  const { postFeedback, loading, error } = useFeedback();
+
+  return (
+    <Button
+      title={loading ? 'Sending…' : 'Send feedback'}
+      disabled={loading}
+      onPress={() =>
+        postFeedback('Login button broken', {
+          description: 'Nothing happens when I tap sign in',
+        })
+      }
+    />
+  );
+}
+```
 
 ## How It Works
 
@@ -206,6 +241,18 @@ Initialize BugSplat crash reporting. Must be called before other functions.
 
 Manually report an error. Returns `{ success: boolean, error?: string }`.
 
+### `postFeedback(title, options?)`
+
+Submit user feedback. `title` is a short summary (required); `options.description` holds the longer body. Returns `{ success: boolean, error?: string, crashId?: number }`.
+
+### `useFeedback()`
+
+React hook returning `{ postFeedback, loading, response, error }` for driving feedback forms.
+
+### `ErrorBoundary`
+
+React error boundary that reports render errors to BugSplat automatically. Accepts a `fallback` (ReactNode or render function receiving `{ error, componentStack, response, resetErrorBoundary }`).
+
 ### `setUser(name, email)`
 
 Update user info for subsequent reports.
@@ -220,7 +267,7 @@ Trigger a test crash to verify integration.
 
 ## Expo Go
 
-`@bugsplat/expo` works in Expo Go with reduced functionality. Since native modules are not available in Expo Go, native crash reporting is disabled. JS error reporting (`init()`, `post()`, `setUser()`, `setAttribute()`) still works via an HTTP fallback. A warning is logged at `init()` to let you know native crash reporting is inactive.
+`@bugsplat/expo` works in Expo Go with reduced functionality. Since native modules are not available in Expo Go, native crash reporting is disabled. JS error reporting (`init()`, `post()`, `postFeedback()`, `setUser()`, `setAttribute()`, `ErrorBoundary`) still works via an HTTP fallback. A warning is logged at `init()` to let you know native crash reporting is inactive.
 
 To test full native crash reporting, use a **release build** (see [Testing Native Crashes](#testing-native-crashes) below). Development builds include a debugger that intercepts crashes before BugSplat can capture them.
 

@@ -1,4 +1,8 @@
 const mockPost = jest.fn().mockResolvedValue({ error: null, response: {} });
+const mockPostFeedback = jest.fn().mockResolvedValue({
+  error: null,
+  response: { crash_id: 7, status: 'success', message: 'ok', current_server_time: 0 },
+});
 const mockSetDefaultAppKey = jest.fn();
 const mockSetDefaultUser = jest.fn();
 const mockSetDefaultEmail = jest.fn();
@@ -6,6 +10,7 @@ const mockSetDefaultDescription = jest.fn();
 
 const mockBugSplatInstance = {
   post: mockPost,
+  postFeedback: mockPostFeedback,
   setDefaultAppKey: mockSetDefaultAppKey,
   setDefaultUser: mockSetDefaultUser,
   setDefaultEmail: mockSetDefaultEmail,
@@ -20,6 +25,7 @@ import { init as initReact } from '@bugsplat/react';
 import {
   init,
   post,
+  postFeedback,
   setUser,
   setAttribute,
   crash,
@@ -134,6 +140,41 @@ describe('BugsplatExpo (web)', () => {
   describe('crash', () => {
     it('throws an error', () => {
       expect(() => crash()).toThrow('BugSplat test crash');
+    });
+  });
+
+  describe('postFeedback', () => {
+    beforeEach(async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      jest.clearAllMocks();
+    });
+
+    it('posts feedback via the BugSplat instance', async () => {
+      const result = await postFeedback('Login button broken', {
+        description: 'Nothing happens when I tap it',
+      });
+      expect(result).toEqual({ success: true, crashId: 7 });
+      expect(mockPostFeedback).toHaveBeenCalledWith('Login button broken', {
+        appKey: undefined,
+        user: undefined,
+        email: undefined,
+        description: 'Nothing happens when I tap it',
+      });
+    });
+
+    it('returns failure when postFeedback throws', async () => {
+      mockPostFeedback.mockRejectedValueOnce(new Error('network error'));
+      const result = await postFeedback('subject');
+      expect(result).toEqual({ success: false, error: 'network error' });
+    });
+
+    it('returns failure when server returns an error', async () => {
+      mockPostFeedback.mockResolvedValueOnce({
+        error: new Error('server error'),
+        response: null,
+      });
+      const result = await postFeedback('subject');
+      expect(result).toEqual({ success: false, error: 'server error' });
     });
   });
 

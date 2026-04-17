@@ -5,6 +5,10 @@ jest.mock('../BugsplatExpoModule', () => ({
 
 const mockBugSplatInstance = {
   post: jest.fn().mockResolvedValue({}),
+  postFeedback: jest.fn().mockResolvedValue({
+    error: null,
+    response: { crash_id: 99, status: 'success', message: 'ok', current_server_time: 0 },
+  }),
   setDefaultAppKey: jest.fn(),
   setDefaultUser: jest.fn(),
   setDefaultEmail: jest.fn(),
@@ -22,7 +26,15 @@ jest.mock('@bugsplat/react', () => ({
   init: mockInitReact,
 }));
 
-import { init, post, setUser, setAttribute, removeAttribute, crash } from '../BugsplatExpo';
+import {
+  init,
+  post,
+  postFeedback,
+  setUser,
+  setAttribute,
+  removeAttribute,
+  crash,
+} from '../BugsplatExpo';
 
 describe('BugsplatExpo (Expo Go / JS fallback)', () => {
   let warnSpy: jest.SpyInstance;
@@ -183,6 +195,39 @@ describe('BugsplatExpo (Expo Go / JS fallback)', () => {
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('crash() requires native modules')
       );
+    });
+  });
+
+  describe('postFeedback', () => {
+    it('fails cleanly if init was not called', async () => {
+      jest.resetModules();
+      const { postFeedback: isolated } = await import('../BugsplatExpo');
+      const result = await isolated('title');
+      expect(result).toEqual({ success: false, error: expect.any(String) });
+    });
+
+    it('posts feedback via the JS client after init', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      const result = await postFeedback('Login button broken', {
+        description: 'Nothing happens when I tap it',
+      });
+      expect(result).toEqual({ success: true, crashId: 99 });
+      expect(mockBugSplatInstance.postFeedback).toHaveBeenCalledWith(
+        'Login button broken',
+        {
+          appKey: undefined,
+          user: undefined,
+          email: undefined,
+          description: 'Nothing happens when I tap it',
+        }
+      );
+    });
+
+    it('returns failure when JS client rejects', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      mockBugSplatInstance.postFeedback.mockRejectedValueOnce(new Error('network error'));
+      const result = await postFeedback('subject');
+      expect(result).toEqual({ success: false, error: 'network error' });
     });
   });
 });
