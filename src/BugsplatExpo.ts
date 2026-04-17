@@ -1,5 +1,4 @@
-import type { BugSplat } from 'bugsplat';
-import { init as initReact } from '@bugsplat/react';
+import { type BugSplat, init as initReact } from '@bugsplat/react';
 
 import type {
   BugSplatFeedbackOptions,
