@@ -34,7 +34,7 @@
   "license": "MIT",
   "homepage": "https://github.com/BugSplat-Git/bugsplat-expo#readme",
   "dependencies": {
-    "@bugsplat/react": "^2.0.0"
+    "@bugsplat/react": "^2.1.0"
   },
   "devDependencies": {
     "@types/react": "~19.1.1",
