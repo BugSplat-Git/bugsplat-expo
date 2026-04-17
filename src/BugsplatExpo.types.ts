@@ -43,6 +43,32 @@ export interface BugSplatPostResult {
 }
 
 /**
+ * Options for submitting user feedback.
+ */
+export interface BugSplatFeedbackOptions {
+  /** Override default app key */
+  appKey?: string;
+  /** Override default user name */
+  user?: string;
+  /** Override default user email */
+  email?: string;
+  /** Longer description of the feedback (title is the short summary) */
+  description?: string;
+}
+
+/**
+ * Result from submitting user feedback.
+ */
+export interface BugSplatFeedbackResult {
+  /** Whether the feedback submission was successful */
+  success: boolean;
+  /** Error message if submission failed */
+  error?: string;
+  /** Crash ID assigned to the feedback submission, if returned by the server */
+  crashId?: number;
+}
+
+/**
  * Configuration passed to the config plugin via app.json / app.config.js.
  */
 export interface BugSplatPluginOptions {

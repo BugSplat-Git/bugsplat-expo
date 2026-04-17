@@ -2,6 +2,8 @@ import type { BugSplat } from '@bugsplat/react';
 import { init as initReact } from '@bugsplat/react';
 
 import type {
+  BugSplatFeedbackOptions,
+  BugSplatFeedbackResult,
   BugSplatInitOptions,
   BugSplatPostOptions,
   BugSplatPostResult,
@@ -68,6 +70,36 @@ export async function post(
       return { success: false, error: result.error.message };
     }
     return { success: true };
+  } catch (e) {
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
+
+/**
+ * Submit user feedback to BugSplat.
+ *
+ * @param title Short summary of the feedback (required)
+ * @param options Optional overrides for user, email, appKey, and description
+ */
+export async function postFeedback(
+  title: string,
+  options?: BugSplatFeedbackOptions
+): Promise<BugSplatFeedbackResult> {
+  const bs = getInstance();
+  try {
+    const result = await bs.postFeedback(title, {
+      appKey: options?.appKey,
+      user: options?.user,
+      email: options?.email,
+      description: options?.description,
+    });
+    if (result.error) {
+      return { success: false, error: result.error.message };
+    }
+    return { success: true, crashId: result.response?.crash_id };
   } catch (e) {
     return {
       success: false,

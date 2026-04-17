@@ -2,9 +2,25 @@ export type {
   BugSplatInitOptions,
   BugSplatPostOptions,
   BugSplatPostResult,
+  BugSplatFeedbackOptions,
+  BugSplatFeedbackResult,
   BugSplatPluginOptions,
 } from './BugsplatExpo.types';
 
-export { init, post, setUser, setAttribute, removeAttribute, crash, nativeAvailable } from './BugsplatExpo';
+export {
+  init,
+  post,
+  postFeedback,
+  setUser,
+  setAttribute,
+  removeAttribute,
+  crash,
+  nativeAvailable,
+} from './BugsplatExpo';
 
-export { ErrorBoundary, useErrorHandler, withErrorBoundary } from './web';
+export {
+  ErrorBoundary,
+  useErrorHandler,
+  useFeedback,
+  withErrorBoundary,
+} from '@bugsplat/react';
