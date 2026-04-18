@@ -79,13 +79,10 @@ describe('BugsplatExpo (native)', () => {
       expect(mockSetCreateComponentStackAttachment).toHaveBeenCalledTimes(1);
       const [builder] = mockSetCreateComponentStackAttachment.mock.calls[0];
       const attachment = builder('at BuggyComponent\n  at ErrorBoundary');
-      expect(attachment).toEqual({
-        filename: 'componentStack.txt',
-        data: {
-          uri: expect.stringMatching(/^data:text\/plain;base64,/),
-          type: 'text/plain',
-        },
-      });
+      expect(attachment.filename).toBe('componentStack.txt');
+      expect(attachment.data).toBeInstanceOf(File);
+      expect((attachment.data as File).name).toBe('componentStack.txt');
+      expect((attachment.data as File).type).toBe('text/plain');
     });
 
     it('passes options to native init', async () => {

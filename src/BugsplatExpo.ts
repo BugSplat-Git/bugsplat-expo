@@ -4,8 +4,6 @@ import {
   type BugSplatAttachment,
   init as initReact,
 } from '@bugsplat/react';
-import { encode as base64Encode } from 'base-64';
-
 import type {
   BugSplatFeedbackOptions,
   BugSplatFeedbackResult,
@@ -20,21 +18,12 @@ export const nativeAvailable = BugsplatExpoModule != null;
 let jsClient: BugSplat | null = null;
 const jsAttributes: Record<string, string> = {};
 
-/**
- * React Native-compatible componentStack attachment builder. RN's FormData
- * polyfill can't serialize browser `Blob`s, so we hand it a `data:` URI inside
- * the `{ uri, type }` file-ref shape that RN's fetch uploads as a real file
- * part.
- */
 function rnCreateComponentStackAttachment(
   componentStack: string
 ): BugSplatAttachment {
   return {
     filename: 'componentStack.txt',
-    data: {
-      uri: `data:text/plain;base64,${base64Encode(componentStack)}`,
-      type: 'text/plain',
-    },
+    data: new File([componentStack], 'componentStack.txt', { type: 'text/plain' }),
   };
 }
 
