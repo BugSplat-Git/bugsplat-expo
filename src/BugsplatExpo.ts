@@ -112,12 +112,7 @@ export async function post(
 
   const err = error instanceof Error ? error : new Error(error);
   try {
-    const result = await jsClient.post(err, {
-      appKey: options?.appKey,
-      user: options?.user,
-      email: options?.email,
-      description: options?.description,
-    });
+    const result = await jsClient.post(err, options);
     if (result.error) {
       return { success: false, error: result.error.message };
     }
@@ -144,12 +139,7 @@ export async function postFeedback(
   }
 
   try {
-    const result = await jsClient.postFeedback(title, {
-      appKey: options?.appKey,
-      user: options?.user,
-      email: options?.email,
-      description: options?.description,
-    });
+    const result = await jsClient.postFeedback(title, options);
     if (result.error) {
       return { success: false, error: result.error.message };
     }

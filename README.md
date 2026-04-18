@@ -177,6 +177,57 @@ The fallback prop accepts a React node or a render function:
 </ErrorBoundary>
 ```
 
+### Collecting user input before posting
+
+By default, `<ErrorBoundary>` posts to BugSplat the moment it catches an error. If you'd rather give the user a chance to describe what they were doing first — and bundle that into a single report instead of two — set `disablePost` on the boundary and post manually from your fallback:
+
+```tsx
+import { useState } from 'react';
+import { ErrorBoundary, post } from '@bugsplat/expo';
+import { Text, TextInput, Button, View } from 'react-native';
+
+<ErrorBoundary
+  disablePost
+  fallback={({ error, componentStack, resetErrorBoundary }) => {
+    const [description, setDescription] = useState('');
+    const [posted, setPosted] = useState(false);
+
+    const submit = async () => {
+      if (posted) return;
+      setPosted(true);
+      await post(error, {
+        description,
+        attributes: { route: 'tasks/123' },
+        attachments: componentStack
+          ? [{
+              filename: 'componentStack.txt',
+              data: new TextEncoder().encode(componentStack),
+            }]
+          : undefined,
+      });
+    };
+
+    return (
+      <View>
+        <Text>Something went wrong: {error.message}</Text>
+        <TextInput value={description} onChangeText={setDescription} />
+        <Button title="Submit" onPress={submit} />
+        <Button title="Dismiss" onPress={() => { submit(); resetErrorBoundary(); }} />
+      </View>
+    );
+  }}
+>
+  <App />
+</ErrorBoundary>
+```
+
+A few notes on this pattern:
+
+- `post()` is **not** idempotent. The `posted` flag in the example is the consumer's responsibility — without it, "Submit then Dismiss" would fire two reports.
+- `componentStack` is wrapped in `Uint8Array` via `TextEncoder` (works on both web and native via Hermes). If you only target web, `new Blob([componentStack], { type: 'text/plain' })` reads more naturally.
+- `attributes` becomes a queryable column in the BugSplat dashboard — useful for filtering crashes by route, feature flag, build channel, etc.
+- If posting fails and you want retry, catch errors from `post()` and reset `posted` accordingly. The recipe doesn't show this to keep it minimal.
+
 ### User Feedback
 
 Submit user feedback tied to your BugSplat database. Works on iOS, Android, and Web.

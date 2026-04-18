@@ -114,12 +114,29 @@ describe('BugsplatExpo (Expo Go / JS fallback)', () => {
       const error = new Error('test error');
       const result = await post(error);
       expect(result).toEqual({ success: true });
-      expect(mockBugSplatInstance.post).toHaveBeenCalledWith(error, {
-        appKey: undefined,
-        user: undefined,
-        email: undefined,
-        description: undefined,
-      });
+      expect(mockBugSplatInstance.post).toHaveBeenCalledWith(error, undefined);
+    });
+
+    it('forwards attachments to JS client post', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      const attachments = [
+        { filename: 'componentStack.txt', data: new Uint8Array([1, 2, 3]) },
+      ];
+      await post(new Error('x'), { attachments });
+      expect(mockBugSplatInstance.post).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({ attachments })
+      );
+    });
+
+    it('forwards attributes to JS client post', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      const attributes = { route: 'home', channel: 'beta' };
+      await post(new Error('x'), { attributes });
+      expect(mockBugSplatInstance.post).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({ attributes })
+      );
     });
 
     it('posts string error by wrapping in Error', async () => {
@@ -127,7 +144,7 @@ describe('BugsplatExpo (Expo Go / JS fallback)', () => {
       await post('string error');
       expect(mockBugSplatInstance.post).toHaveBeenCalledWith(
         expect.objectContaining({ message: 'string error' }),
-        expect.any(Object)
+        undefined
       );
     });
 
@@ -219,12 +236,18 @@ describe('BugsplatExpo (Expo Go / JS fallback)', () => {
       expect(result).toEqual({ success: true, crashId: 99 });
       expect(mockBugSplatInstance.postFeedback).toHaveBeenCalledWith(
         'Login button broken',
-        {
-          appKey: undefined,
-          user: undefined,
-          email: undefined,
-          description: 'Nothing happens when I tap it',
-        }
+        { description: 'Nothing happens when I tap it' }
+      );
+    });
+
+    it('forwards attachments and attributes to JS client postFeedback', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      const attachments = [{ filename: 'log.txt', data: new Uint8Array([1]) }];
+      const attributes = { route: 'settings' };
+      await postFeedback('subject', { attachments, attributes });
+      expect(mockBugSplatInstance.postFeedback).toHaveBeenCalledWith(
+        'subject',
+        expect.objectContaining({ attachments, attributes })
       );
     });
 

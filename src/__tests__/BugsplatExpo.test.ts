@@ -193,12 +193,7 @@ describe('BugsplatExpo (native)', () => {
       expect(result).toEqual({ success: true, crashId: 42 });
       expect(mockBugSplatInstance.postFeedback).toHaveBeenCalledWith(
         'Login button broken',
-        {
-          appKey: undefined,
-          user: undefined,
-          email: undefined,
-          description: 'Nothing happens when I tap it',
-        }
+        { description: 'Nothing happens when I tap it' }
       );
     });
 

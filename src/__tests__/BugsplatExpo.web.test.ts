@@ -70,21 +70,49 @@ describe('BugsplatExpo (web)', () => {
       const error = new Error('test error');
       const result = await post(error);
       expect(result).toEqual({ success: true });
-      expect(mockPost).toHaveBeenCalledWith(error, {
-        appKey: undefined,
-        user: undefined,
-        email: undefined,
-        description: undefined,
+      expect(mockPost).toHaveBeenCalledWith(error, undefined);
+    });
+
+    it('forwards attachments to bs.post', async () => {
+      const attachments = [
+        {
+          filename: 'componentStack.txt',
+          data: new Uint8Array([1, 2, 3]),
+        },
+      ];
+      await post(new Error('x'), { attachments });
+      expect(mockPost).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({ attachments })
+      );
+    });
+
+    it('forwards attributes to bs.post', async () => {
+      const attributes = { route: 'tasks/123', feature: 'beta' };
+      await post(new Error('x'), { attributes });
+      expect(mockPost).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({ attributes })
+      );
+    });
+
+    it('forwards existing fields (description, user, email, appKey)', async () => {
+      await post(new Error('x'), {
+        appKey: 'k',
+        user: 'u',
+        email: 'e',
+        description: 'd',
       });
+      expect(mockPost).toHaveBeenCalledWith(
+        expect.any(Error),
+        { appKey: 'k', user: 'u', email: 'e', description: 'd' }
+      );
     });
 
     it('posts a string error by wrapping it in Error', async () => {
       const result = await post('string error');
       expect(result).toEqual({ success: true });
-      expect(mockPost).toHaveBeenCalledWith(
-        expect.any(Error),
-        expect.any(Object)
-      );
+      expect(mockPost).toHaveBeenCalledWith(expect.any(Error), undefined);
     });
 
     it('returns failure when post throws', async () => {
@@ -155,11 +183,20 @@ describe('BugsplatExpo (web)', () => {
       });
       expect(result).toEqual({ success: true, crashId: 7 });
       expect(mockPostFeedback).toHaveBeenCalledWith('Login button broken', {
-        appKey: undefined,
-        user: undefined,
-        email: undefined,
         description: 'Nothing happens when I tap it',
       });
+    });
+
+    it('forwards attachments and attributes to bs.postFeedback', async () => {
+      const attachments = [
+        { filename: 'log.txt', data: new Uint8Array([1]) },
+      ];
+      const attributes = { route: 'settings' };
+      await postFeedback('subject', { attachments, attributes });
+      expect(mockPostFeedback).toHaveBeenCalledWith(
+        'subject',
+        expect.objectContaining({ attachments, attributes })
+      );
     });
 
     it('returns failure when postFeedback throws', async () => {

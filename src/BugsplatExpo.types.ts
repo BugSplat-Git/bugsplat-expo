@@ -1,3 +1,10 @@
+export type {
+  BugSplatAttachment,
+  BugSplatOptions,
+  BugSplatOptions as BugSplatPostOptions,
+  BugSplatOptions as BugSplatFeedbackOptions,
+} from 'bugsplat';
+
 /**
  * Options for initializing BugSplat.
  */
@@ -19,20 +26,6 @@ export interface BugSplatInitOptions {
 }
 
 /**
- * Options for manually posting an error.
- */
-export interface BugSplatPostOptions {
-  /** Override default app key */
-  appKey?: string;
-  /** Override default user */
-  user?: string;
-  /** Override default email */
-  email?: string;
-  /** Description of the error context */
-  description?: string;
-}
-
-/**
  * Result from posting an error report.
  */
 export interface BugSplatPostResult {
@@ -40,20 +33,6 @@ export interface BugSplatPostResult {
   success: boolean;
   /** Error message if the post failed */
   error?: string;
-}
-
-/**
- * Options for submitting user feedback.
- */
-export interface BugSplatFeedbackOptions {
-  /** Override default app key */
-  appKey?: string;
-  /** Override default user name */
-  user?: string;
-  /** Override default user email */
-  email?: string;
-  /** Longer description of the feedback (title is the short summary) */
-  description?: string;
 }
 
 /**

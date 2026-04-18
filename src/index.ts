@@ -1,4 +1,6 @@
 export type {
+  BugSplatAttachment,
+  BugSplatOptions,
   BugSplatInitOptions,
   BugSplatPostOptions,
   BugSplatPostResult,
