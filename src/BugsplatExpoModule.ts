@@ -16,6 +16,7 @@ export interface BugsplatExpoNativeModule {
   setAttribute(key: string, value: string): void;
   removeAttribute(key: string): void;
   crash(): void;
+  hang(): void;
 }
 
 export default requireOptionalNativeModule<BugsplatExpoNativeModule>('BugsplatExpo');

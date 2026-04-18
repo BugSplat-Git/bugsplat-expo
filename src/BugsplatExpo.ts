@@ -180,3 +180,18 @@ export function crash(): void {
   }
   console.warn('[@bugsplat/expo] crash() requires native modules. Use a development build to test native crashes.');
 }
+
+/**
+ * Trigger a test hang by blocking the native main thread in an infinite loop.
+ * Useful for verifying ANR (Application Not Responding) detection on Android.
+ *
+ * Currently Android-only — iOS and Expo Go log a warning instead. Requires a
+ * release build; debuggers intercept ANRs in debug builds.
+ */
+export function hang(): void {
+  if (nativeAvailable) {
+    BugsplatExpoModule!.hang();
+    return;
+  }
+  console.warn('[@bugsplat/expo] hang() requires native modules. Use a development build to test ANR detection.');
+}

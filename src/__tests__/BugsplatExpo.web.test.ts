@@ -29,6 +29,7 @@ import {
   setUser,
   setAttribute,
   crash,
+  hang,
 } from '../BugsplatExpo.web';
 
 describe('BugsplatExpo (web)', () => {
@@ -140,6 +141,17 @@ describe('BugsplatExpo (web)', () => {
   describe('crash', () => {
     it('throws an error', () => {
       expect(() => crash()).toThrow('BugSplat test crash');
+    });
+  });
+
+  describe('hang', () => {
+    it('warns that hang is not supported on web', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      hang();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('not supported on web')
+      );
+      warnSpy.mockRestore();
     });
   });
 

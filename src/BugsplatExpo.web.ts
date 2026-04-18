@@ -142,3 +142,10 @@ export function removeAttribute(key: string): void {
 export function crash(): void {
   throw new Error('BugSplat test crash');
 }
+
+/**
+ * Trigger a test hang. Hang detection is a native-only feature — no-op on web.
+ */
+export function hang(): void {
+  console.warn('[@bugsplat/expo] hang() is not supported on web.');
+}

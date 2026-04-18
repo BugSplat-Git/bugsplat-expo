@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { init, post, setUser, setAttribute, removeAttribute, crash, nativeAvailable, ErrorBoundary } from '@bugsplat/expo';
+import { init, post, setUser, setAttribute, removeAttribute, crash, hang, nativeAvailable, ErrorBoundary } from '@bugsplat/expo';
+import { Platform } from 'react-native';
 import { Button, Image, ScrollView, Text, View, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -67,6 +68,11 @@ export default function App() {
 
   const handleCrash = () => {
     crash();
+  };
+
+  const handleHang = () => {
+    setStatus('Hanging main thread — app should ANR shortly…');
+    hang();
   };
 
   return (
@@ -141,6 +147,27 @@ export default function App() {
             {(!nativeAvailable || __DEV__) && (
               <Text style={styles.disabledHint}>
                 Native crash testing requires a release build
+              </Text>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.group}>
+          <Text style={styles.groupHeader}>Hang Detection (ANR)</Text>
+          <View style={styles.buttonRow}>
+            <Button
+              title="Trigger Hang"
+              onPress={handleHang}
+              color={nativeAvailable && !__DEV__ && Platform.OS === 'android' ? 'red' : 'gray'}
+              disabled={!nativeAvailable || __DEV__ || Platform.OS !== 'android'}
+            />
+            {Platform.OS !== 'android' ? (
+              <Text style={styles.disabledHint}>
+                Hang detection is currently Android-only
+              </Text>
+            ) : (!nativeAvailable || __DEV__) && (
+              <Text style={styles.disabledHint}>
+                Hang testing requires a release build
               </Text>
             )}
           </View>

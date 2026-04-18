@@ -15,6 +15,7 @@ export {
   setAttribute,
   removeAttribute,
   crash,
+  hang,
   nativeAvailable,
 } from './BugsplatExpo';
 

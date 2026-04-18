@@ -5,6 +5,7 @@ const mockModule = {
   setAttribute: jest.fn(),
   removeAttribute: jest.fn(),
   crash: jest.fn(),
+  hang: jest.fn(),
 };
 
 jest.mock('../BugsplatExpoModule', () => ({
@@ -43,6 +44,7 @@ import {
   setAttribute,
   removeAttribute,
   crash,
+  hang,
 } from '../BugsplatExpo';
 
 describe('BugsplatExpo (native)', () => {
@@ -221,6 +223,13 @@ describe('BugsplatExpo (native)', () => {
     it('calls native crash', () => {
       crash();
       expect(mockModule.crash).toHaveBeenCalled();
+    });
+  });
+
+  describe('hang', () => {
+    it('calls native hang', () => {
+      hang();
+      expect(mockModule.hang).toHaveBeenCalled();
     });
   });
 });
