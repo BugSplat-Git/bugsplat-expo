@@ -1,5 +1,10 @@
 jest.mock('expo-blob', () => {});
 
+const mockExpoFetch = jest.fn();
+jest.mock('expo/fetch', () => ({
+  fetch: mockExpoFetch,
+}));
+
 jest.mock('../BugsplatExpoModule', () => ({
   __esModule: true,
   default: null,
@@ -56,6 +61,11 @@ describe('BugsplatExpo (Expo Go / JS fallback)', () => {
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('Native crash reporting is unavailable')
       );
+    });
+
+    it('injects expo/fetch into the JS client', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      expect((mockBugSplatInstance as any)._fetch).toBe(mockExpoFetch);
     });
 
     it('initializes a JS client via @bugsplat/react', async () => {

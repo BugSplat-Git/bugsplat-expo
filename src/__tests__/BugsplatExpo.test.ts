@@ -1,5 +1,10 @@
 jest.mock('expo-blob', () => {});
 
+const mockExpoFetch = jest.fn();
+jest.mock('expo/fetch', () => ({
+  fetch: mockExpoFetch,
+}));
+
 const mockModule = {
   init: jest.fn().mockResolvedValue(undefined),
   setUser: jest.fn(),
@@ -60,6 +65,11 @@ describe('BugsplatExpo (native)', () => {
         '1.0.0',
         undefined
       );
+    });
+
+    it('injects expo/fetch into the JS client', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      expect((mockBugSplatInstance as any)._fetch).toBe(mockExpoFetch);
     });
 
     it('also initializes a JS client so HTTP-only APIs (feedback) work', async () => {

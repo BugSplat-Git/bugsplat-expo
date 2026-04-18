@@ -1,4 +1,5 @@
 import 'expo-blob';
+import { fetch as expoFetch } from 'expo/fetch';
 import {
   type BugSplat,
   init as initReact,
@@ -48,6 +49,8 @@ export async function init(
   if (nativeAvailable) {
     await BugsplatExpoModule!.init(database, application, version, options as Record<string, unknown>);
     initReact({ database, application, version })((client) => {
+      // @ts-expect-error -- accessing private _fetch to inject expo/fetch
+      client._fetch = expoFetch;
       jsClient = client;
       applyDefaults(client, options);
     });
@@ -61,6 +64,8 @@ export async function init(
   );
 
   initReact({ database, application, version })((client) => {
+    // @ts-expect-error -- accessing private _fetch to inject expo/fetch
+    client._fetch = expoFetch;
     jsClient = client;
     applyDefaults(client, options);
   });
