@@ -82,12 +82,18 @@ public class BugsplatExpoModule: Module {
       var postUser = self.userName
       var postEmail = self.userEmail
       var postDescription = ""
+      var postAttributes = self.attributes
 
       if let opts = options {
         if let key = opts["appKey"] as? String { postAppKey = key }
         if let user = opts["user"] as? String { postUser = user }
         if let email = opts["email"] as? String { postEmail = email }
         if let desc = opts["description"] as? String { postDescription = desc }
+        if let attrs = opts["attributes"] as? [String: String] {
+          for (key, value) in attrs {
+            postAttributes[key] = value
+          }
+        }
       }
 
       let url = URL(string: "https://\(postDatabase).bugsplat.com/post/js/")!
@@ -104,6 +110,14 @@ public class BugsplatExpoModule: Module {
         body.append("\(value)\r\n".data(using: .utf8)!)
       }
 
+      func appendFile(_ filename: String, _ data: Data) {
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"\(filename)\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
+        body.append(data)
+        body.append("\r\n".data(using: .utf8)!)
+      }
+
       appendField("database", postDatabase)
       appendField("appName", postApp)
       appendField("appVersion", postVersion)
@@ -113,10 +127,21 @@ public class BugsplatExpoModule: Module {
       appendField("description", postDescription)
       appendField("callstack", callstack)
 
-      if !self.attributes.isEmpty {
-        if let json = try? JSONSerialization.data(withJSONObject: self.attributes),
+      if !postAttributes.isEmpty {
+        if let json = try? JSONSerialization.data(withJSONObject: postAttributes),
            let jsonString = String(data: json, encoding: .utf8) {
           appendField("attributes", jsonString)
+        }
+      }
+
+      if let opts = options,
+         let attachments = opts["attachments"] as? [[String: Any]] {
+        for attachment in attachments {
+          if let filename = attachment["filename"] as? String,
+             let dataString = attachment["data"] as? String,
+             let data = Data(base64Encoded: dataString) {
+            appendFile(filename, data)
+          }
         }
       }
 

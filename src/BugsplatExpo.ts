@@ -93,6 +93,36 @@ export async function init(
 }
 
 /**
+ * Serialize attachment data to base64 for the native bridge.
+ * Accepts Blob, Uint8Array, or the RN file-ref shape from
+ * rnCreateComponentStackAttachment.
+ */
+async function serializeAttachmentsForNative(
+  attachments: BugSplatPostOptions['attachments']
+): Promise<Array<{ filename: string; data: string }> | undefined> {
+  if (!attachments?.length) return undefined;
+  return Promise.all(
+    attachments.map(async (att) => {
+      if (typeof att.data === 'string') {
+        return { filename: att.filename, data: base64Encode(att.data) };
+      }
+      if (att.data instanceof Uint8Array) {
+        let binary = '';
+        for (let i = 0; i < att.data.length; i++) {
+          binary += String.fromCharCode(att.data[i]);
+        }
+        return { filename: att.filename, data: base64Encode(binary) };
+      }
+      if (typeof Blob !== 'undefined' && att.data instanceof Blob) {
+        const text = await att.data.text();
+        return { filename: att.filename, data: base64Encode(text) };
+      }
+      return { filename: att.filename, data: '' };
+    })
+  );
+}
+
+/**
  * Manually post an error to BugSplat.
  * Uses native code when available, otherwise falls back to JS HTTP transport.
  */
@@ -103,7 +133,11 @@ export async function post(
   if (nativeAvailable) {
     const message = error instanceof Error ? error.message : error;
     const callstack = error instanceof Error ? (error.stack ?? message) : message;
-    return BugsplatExpoModule!.post(message, callstack, options as Record<string, unknown>);
+    const nativeOptions: Record<string, unknown> = { ...options };
+    if (options?.attachments) {
+      nativeOptions.attachments = await serializeAttachmentsForNative(options.attachments);
+    }
+    return BugsplatExpoModule!.post(message, callstack, nativeOptions);
   }
 
   if (!jsClient) {

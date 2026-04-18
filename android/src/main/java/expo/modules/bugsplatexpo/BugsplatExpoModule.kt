@@ -79,12 +79,15 @@ class BugsplatExpoModule : Module() {
       var postUser = userName
       var postEmail = userEmail
       var postDescription = ""
+      val postAttributes = attributes.toMutableMap()
 
       options?.let { opts ->
         (opts["appKey"] as? String)?.let { postAppKey = it }
         (opts["user"] as? String)?.let { postUser = it }
         (opts["email"] as? String)?.let { postEmail = it }
         (opts["description"] as? String)?.let { postDescription = it }
+        @Suppress("UNCHECKED_CAST")
+        (opts["attributes"] as? Map<String, String>)?.let { postAttributes.putAll(it) }
       }
 
       try {
@@ -95,12 +98,20 @@ class BugsplatExpoModule : Module() {
         connection.doOutput = true
         connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
 
-        val writer = OutputStreamWriter(connection.outputStream)
+        val outputStream = connection.outputStream
 
         fun writeField(name: String, value: String) {
-          writer.write("--$boundary\r\n")
-          writer.write("Content-Disposition: form-data; name=\"$name\"\r\n\r\n")
-          writer.write("$value\r\n")
+          val header = "--$boundary\r\nContent-Disposition: form-data; name=\"$name\"\r\n\r\n"
+          outputStream.write(header.toByteArray())
+          outputStream.write(value.toByteArray())
+          outputStream.write("\r\n".toByteArray())
+        }
+
+        fun writeFile(filename: String, data: ByteArray) {
+          val header = "--$boundary\r\nContent-Disposition: form-data; name=\"$filename\"; filename=\"$filename\"\r\nContent-Type: application/octet-stream\r\n\r\n"
+          outputStream.write(header.toByteArray())
+          outputStream.write(data)
+          outputStream.write("\r\n".toByteArray())
         }
 
         writeField("database", postDatabase)
@@ -112,14 +123,22 @@ class BugsplatExpoModule : Module() {
         writeField("description", postDescription)
         writeField("callstack", callstack)
 
-        if (attributes.isNotEmpty()) {
-          val json = org.json.JSONObject(attributes as Map<*, *>).toString()
+        if (postAttributes.isNotEmpty()) {
+          val json = org.json.JSONObject(postAttributes as Map<*, *>).toString()
           writeField("attributes", json)
         }
 
-        writer.write("--$boundary--\r\n")
-        writer.flush()
-        writer.close()
+        @Suppress("UNCHECKED_CAST")
+        (options?.get("attachments") as? List<Map<String, Any>>)?.forEach { attachment ->
+          val filename = attachment["filename"] as? String ?: return@forEach
+          val dataString = attachment["data"] as? String ?: return@forEach
+          val data = android.util.Base64.decode(dataString, android.util.Base64.DEFAULT)
+          writeFile(filename, data)
+        }
+
+        outputStream.write("--$boundary--\r\n".toByteArray())
+        outputStream.flush()
+        outputStream.close()
 
         val responseCode = connection.responseCode
         connection.disconnect()
