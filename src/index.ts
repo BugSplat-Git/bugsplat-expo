@@ -1,4 +1,6 @@
 export type {
+  BugSplatAttachment,
+  BugSplatOptions,
   BugSplatInitOptions,
   BugSplatPostOptions,
   BugSplatPostResult,
@@ -23,4 +25,10 @@ export {
   useErrorHandler,
   useFeedback,
   withErrorBoundary,
+} from '@bugsplat/react';
+
+export type {
+  FallbackProps,
+  FallbackElement,
+  FallbackRender,
 } from '@bugsplat/react';

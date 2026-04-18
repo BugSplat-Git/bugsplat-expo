@@ -1,11 +1,9 @@
+import 'expo-blob';
+import { fetch as expoFetch } from 'expo/fetch';
 import {
-  appScope,
   type BugSplat,
-  type BugSplatAttachment,
   init as initReact,
 } from '@bugsplat/react';
-import { encode as base64Encode } from 'base-64';
-
 import type {
   BugSplatFeedbackOptions,
   BugSplatFeedbackResult,
@@ -19,24 +17,6 @@ export const nativeAvailable = BugsplatExpoModule != null;
 
 let jsClient: BugSplat | null = null;
 const jsAttributes: Record<string, string> = {};
-
-/**
- * React Native-compatible componentStack attachment builder. RN's FormData
- * polyfill can't serialize browser `Blob`s, so we hand it a `data:` URI inside
- * the `{ uri, type }` file-ref shape that RN's fetch uploads as a real file
- * part.
- */
-function rnCreateComponentStackAttachment(
-  componentStack: string
-): BugSplatAttachment {
-  return {
-    filename: 'componentStack.txt',
-    data: {
-      uri: `data:text/plain;base64,${base64Encode(componentStack)}`,
-      type: 'text/plain',
-    },
-  };
-}
 
 function applyDefaults(client: BugSplat, options?: BugSplatInitOptions): void {
   if (options?.appKey) client.setDefaultAppKey(options.appKey);
@@ -66,14 +46,11 @@ export async function init(
   version: string,
   options?: BugSplatInitOptions
 ): Promise<void> {
-  // Tell bugsplat-react's ErrorBoundary how to build its componentStack
-  // attachment on React Native. Set synchronously before any awaits so an
-  // ErrorBoundary that catches during startup doesn't race the default.
-  appScope.setCreateComponentStackAttachment(rnCreateComponentStackAttachment);
-
   if (nativeAvailable) {
     await BugsplatExpoModule!.init(database, application, version, options as Record<string, unknown>);
     initReact({ database, application, version })((client) => {
+      // @ts-expect-error -- accessing private _fetch to inject expo/fetch
+      client._fetch = expoFetch;
       jsClient = client;
       applyDefaults(client, options);
     });
@@ -87,6 +64,8 @@ export async function init(
   );
 
   initReact({ database, application, version })((client) => {
+    // @ts-expect-error -- accessing private _fetch to inject expo/fetch
+    client._fetch = expoFetch;
     jsClient = client;
     applyDefaults(client, options);
   });
@@ -94,30 +73,20 @@ export async function init(
 
 /**
  * Manually post an error to BugSplat.
- * Uses native code when available, otherwise falls back to JS HTTP transport.
+ * Always uses the JS client's HTTP transport — the native bridge handles
+ * native crashes (Crashpad / PLCrashReporter), not JS-caught errors.
  */
 export async function post(
   error: Error | string,
   options?: BugSplatPostOptions
 ): Promise<BugSplatPostResult> {
-  if (nativeAvailable) {
-    const message = error instanceof Error ? error.message : error;
-    const callstack = error instanceof Error ? (error.stack ?? message) : message;
-    return BugsplatExpoModule!.post(message, callstack, options as Record<string, unknown>);
-  }
-
   if (!jsClient) {
     return { success: false, error: 'BugSplat has not been initialized. Call init() first.' };
   }
 
   const err = error instanceof Error ? error : new Error(error);
   try {
-    const result = await jsClient.post(err, {
-      appKey: options?.appKey,
-      user: options?.user,
-      email: options?.email,
-      description: options?.description,
-    });
+    const result = await jsClient.post(err, options);
     if (result.error) {
       return { success: false, error: result.error.message };
     }
@@ -144,12 +113,7 @@ export async function postFeedback(
   }
 
   try {
-    const result = await jsClient.postFeedback(title, {
-      appKey: options?.appKey,
-      user: options?.user,
-      email: options?.email,
-      description: options?.description,
-    });
+    const result = await jsClient.postFeedback(title, options);
     if (result.error) {
       return { success: false, error: result.error.message };
     }

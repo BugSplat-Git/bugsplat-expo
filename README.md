@@ -177,6 +177,58 @@ The fallback prop accepts a React node or a render function:
 </ErrorBoundary>
 ```
 
+### Collecting user input before posting
+
+By default, `<ErrorBoundary>` posts to BugSplat the moment it catches an error. If you'd rather give the user a chance to describe what they were doing first — and bundle that into a single report instead of two — set `disablePost` on the boundary and post manually from your fallback:
+
+`<ErrorBoundary>` is a class component, so hooks can't live directly inside its `fallback` render prop — extract the fallback into its own functional component:
+
+```tsx
+import { useRef, useState } from 'react';
+import { ErrorBoundary, post, type FallbackProps } from '@bugsplat/expo';
+import { Text, TextInput, Button, View } from 'react-native';
+
+function ErrorFallback({ error, componentStack, resetErrorBoundary }: FallbackProps) {
+  const [description, setDescription] = useState('');
+  const posted = useRef(false);
+
+  const submit = async () => {
+    if (posted.current) return;
+    posted.current = true;
+    await post(error, {
+      description,
+      attributes: { route: 'tasks/123' },
+      attachments: componentStack
+        ? [{
+            filename: 'componentStack.txt',
+            data: new Blob([componentStack], { type: 'text/plain' }),
+          }]
+        : undefined,
+    });
+  };
+
+  return (
+    <View>
+      <Text>Something went wrong: {error.message}</Text>
+      <TextInput value={description} onChangeText={setDescription} />
+      <Button title="Submit" onPress={submit} />
+      <Button title="Dismiss" onPress={() => { submit(); resetErrorBoundary(); }} />
+    </View>
+  );
+}
+
+<ErrorBoundary disablePost fallback={(props) => <ErrorFallback {...props} />}>
+  <App />
+</ErrorBoundary>
+```
+
+A few notes on this pattern:
+
+- `post()` is **not** idempotent. The `useRef` guard is the consumer's responsibility — without it, a fast double-tap (or "Submit then Dismiss") would fire two reports. `useRef` updates synchronously, so it guards taps that land in the same render window; `useState` would not.
+- `componentStack` is wrapped in a `Blob`. This works cross-platform because `@bugsplat/expo` includes `expo-blob`, which polyfills the web-standard `Blob` API on native.
+- `attributes` becomes a queryable column in the BugSplat dashboard — useful for filtering crashes by route, feature flag, build channel, etc.
+- If posting fails and you want retry, check the `success` property of the value returned by `post()` and reset `posted.current` accordingly. The recipe doesn't show this to keep it minimal.
+
 ### User Feedback
 
 Submit user feedback tied to your BugSplat database. Works on iOS, Android, and Web.

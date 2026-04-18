@@ -1,6 +1,12 @@
+jest.mock('expo-blob', () => {});
+
+const mockExpoFetch = jest.fn();
+jest.mock('expo/fetch', () => ({
+  fetch: mockExpoFetch,
+}));
+
 const mockModule = {
   init: jest.fn().mockResolvedValue(undefined),
-  post: jest.fn().mockResolvedValue({ success: true }),
   setUser: jest.fn(),
   setAttribute: jest.fn(),
   removeAttribute: jest.fn(),
@@ -31,13 +37,8 @@ const mockInitReact = jest.fn().mockReturnValue(
   }
 );
 
-const mockSetCreateComponentStackAttachment = jest.fn();
-
 jest.mock('@bugsplat/react', () => ({
   init: mockInitReact,
-  appScope: {
-    setCreateComponentStackAttachment: mockSetCreateComponentStackAttachment,
-  },
 }));
 
 import {
@@ -66,26 +67,17 @@ describe('BugsplatExpo (native)', () => {
       );
     });
 
+    it('injects expo/fetch into the JS client', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      expect((mockBugSplatInstance as any)._fetch).toBe(mockExpoFetch);
+    });
+
     it('also initializes a JS client so HTTP-only APIs (feedback) work', async () => {
       await init('test-db', 'MyApp', '1.0.0');
       expect(mockInitReact).toHaveBeenCalledWith({
         database: 'test-db',
         application: 'MyApp',
         version: '1.0.0',
-      });
-    });
-
-    it('installs an RN-compatible componentStack attachment builder on appScope', async () => {
-      await init('test-db', 'MyApp', '1.0.0');
-      expect(mockSetCreateComponentStackAttachment).toHaveBeenCalledTimes(1);
-      const [builder] = mockSetCreateComponentStackAttachment.mock.calls[0];
-      const attachment = builder('at BuggyComponent\n  at ErrorBoundary');
-      expect(attachment).toEqual({
-        filename: 'componentStack.txt',
-        data: {
-          uri: expect.stringMatching(/^data:text\/plain;base64,/),
-          type: 'text/plain',
-        },
       });
     });
 
@@ -106,35 +98,74 @@ describe('BugsplatExpo (native)', () => {
   });
 
   describe('post', () => {
-    it('posts an Error with message and stack', async () => {
+    it('posts an Error via JS client', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
       const error = new Error('something failed');
       const result = await post(error);
       expect(result).toEqual({ success: true });
-      expect(mockModule.post).toHaveBeenCalledWith(
-        'something failed',
-        error.stack,
+      expect(mockBugSplatInstance.post).toHaveBeenCalledWith(error, undefined);
+    });
+
+    it('posts a string error by wrapping in Error', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      await post('string error');
+      expect(mockBugSplatInstance.post).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'string error' }),
         undefined
       );
     });
 
-    it('posts a string error', async () => {
-      const result = await post('string error');
-      expect(result).toEqual({ success: true });
-      expect(mockModule.post).toHaveBeenCalledWith(
-        'string error',
-        'string error',
-        undefined
-      );
-    });
-
-    it('passes options to native post', async () => {
+    it('passes options to JS client post', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
       const options = { user: 'Bob', email: 'bob@example.com' };
       await post('test', options);
-      expect(mockModule.post).toHaveBeenCalledWith(
-        'test',
-        'test',
+      expect(mockBugSplatInstance.post).toHaveBeenCalledWith(
+        expect.any(Error),
         options
       );
+    });
+
+    it('forwards attachments to JS client post', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      const attachments = [
+        { filename: 'componentStack.txt', data: new Uint8Array([1, 2, 3]) },
+      ];
+      await post(new Error('x'), { attachments });
+      expect(mockBugSplatInstance.post).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({ attachments })
+      );
+    });
+
+    it('forwards attributes to JS client post', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      const attributes = { route: 'home', channel: 'beta' };
+      await post(new Error('x'), { attributes });
+      expect(mockBugSplatInstance.post).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({ attributes })
+      );
+    });
+
+    it('returns failure if init was not called', async () => {
+      jest.resetModules();
+      const { post: isolatedPost } = await import('../BugsplatExpo');
+      const result = await isolatedPost(new Error('test'));
+      expect(result).toEqual({ success: false, error: expect.any(String) });
+    });
+
+    it('returns failure when JS client post fails', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      mockBugSplatInstance.post.mockRejectedValueOnce(new Error('network error'));
+      const result = await post('test');
+      expect(result).toEqual({ success: false, error: 'network error' });
+    });
+
+    it('returns failure when JS client post returns error', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      mockBugSplatInstance.post.mockResolvedValueOnce({ error: new Error('server error') });
+      const result = await post('test');
+      expect(result).toEqual({ success: false, error: 'server error' });
     });
   });
 
@@ -193,12 +224,7 @@ describe('BugsplatExpo (native)', () => {
       expect(result).toEqual({ success: true, crashId: 42 });
       expect(mockBugSplatInstance.postFeedback).toHaveBeenCalledWith(
         'Login button broken',
-        {
-          appKey: undefined,
-          user: undefined,
-          email: undefined,
-          description: 'Nothing happens when I tap it',
-        }
+        { description: 'Nothing happens when I tap it' }
       );
     });
 

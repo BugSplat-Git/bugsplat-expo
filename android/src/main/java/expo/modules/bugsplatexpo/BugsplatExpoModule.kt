@@ -6,10 +6,6 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.exception.Exceptions
 import com.bugsplat.android.BugSplatBridge
-import java.io.OutputStreamWriter
-import java.net.HttpURLConnection
-import java.net.URL
-import java.util.UUID
 
 class BugsplatExpoModule : Module() {
   private var database: String = ""
@@ -69,69 +65,6 @@ class BugsplatExpoModule : Module() {
       latch.await()
       initError?.let { throw it }
       initialized = true
-    }
-
-    AsyncFunction("post") { message: String, callstack: String, options: Map<String, Any>? ->
-      val postDatabase = database
-      val postApp = applicationName
-      val postVersion = applicationVersion
-      var postAppKey = appKey
-      var postUser = userName
-      var postEmail = userEmail
-      var postDescription = ""
-
-      options?.let { opts ->
-        (opts["appKey"] as? String)?.let { postAppKey = it }
-        (opts["user"] as? String)?.let { postUser = it }
-        (opts["email"] as? String)?.let { postEmail = it }
-        (opts["description"] as? String)?.let { postDescription = it }
-      }
-
-      try {
-        val url = URL("https://$postDatabase.bugsplat.com/post/js/")
-        val boundary = UUID.randomUUID().toString()
-        val connection = url.openConnection() as HttpURLConnection
-        connection.requestMethod = "POST"
-        connection.doOutput = true
-        connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-
-        val writer = OutputStreamWriter(connection.outputStream)
-
-        fun writeField(name: String, value: String) {
-          writer.write("--$boundary\r\n")
-          writer.write("Content-Disposition: form-data; name=\"$name\"\r\n\r\n")
-          writer.write("$value\r\n")
-        }
-
-        writeField("database", postDatabase)
-        writeField("appName", postApp)
-        writeField("appVersion", postVersion)
-        writeField("appKey", postAppKey)
-        writeField("user", postUser)
-        writeField("email", postEmail)
-        writeField("description", postDescription)
-        writeField("callstack", callstack)
-
-        if (attributes.isNotEmpty()) {
-          val json = org.json.JSONObject(attributes as Map<*, *>).toString()
-          writeField("attributes", json)
-        }
-
-        writer.write("--$boundary--\r\n")
-        writer.flush()
-        writer.close()
-
-        val responseCode = connection.responseCode
-        connection.disconnect()
-
-        if (responseCode == 200) {
-          mapOf("success" to true)
-        } else {
-          mapOf("success" to false, "error" to "HTTP $responseCode")
-        }
-      } catch (e: Exception) {
-        mapOf("success" to false, "error" to (e.message ?: "Unknown error"))
-      }
     }
 
     Function("setUser") { name: String, email: String ->
