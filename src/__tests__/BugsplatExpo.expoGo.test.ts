@@ -22,8 +22,13 @@ const mockInitReact = jest.fn().mockReturnValue(
   }
 );
 
+const mockSetCreateComponentStackAttachment = jest.fn();
+
 jest.mock('@bugsplat/react', () => ({
   init: mockInitReact,
+  appScope: {
+    setCreateComponentStackAttachment: mockSetCreateComponentStackAttachment,
+  },
 }));
 
 import {

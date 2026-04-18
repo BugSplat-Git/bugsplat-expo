@@ -31,8 +31,13 @@ const mockInitReact = jest.fn().mockReturnValue(
   }
 );
 
+const mockSetCreateComponentStackAttachment = jest.fn();
+
 jest.mock('@bugsplat/react', () => ({
   init: mockInitReact,
+  appScope: {
+    setCreateComponentStackAttachment: mockSetCreateComponentStackAttachment,
+  },
 }));
 
 import {
@@ -67,6 +72,20 @@ describe('BugsplatExpo (native)', () => {
         database: 'test-db',
         application: 'MyApp',
         version: '1.0.0',
+      });
+    });
+
+    it('installs an RN-compatible componentStack attachment builder on appScope', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      expect(mockSetCreateComponentStackAttachment).toHaveBeenCalledTimes(1);
+      const [builder] = mockSetCreateComponentStackAttachment.mock.calls[0];
+      const attachment = builder('at BuggyComponent\n  at ErrorBoundary');
+      expect(attachment).toEqual({
+        filename: 'componentStack.txt',
+        data: {
+          uri: expect.stringMatching(/^data:text\/plain;base64,/),
+          type: 'text/plain',
+        },
       });
     });
 

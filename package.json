@@ -34,9 +34,11 @@
   "license": "MIT",
   "homepage": "https://github.com/BugSplat-Git/bugsplat-expo#readme",
   "dependencies": {
-    "@bugsplat/react": "^2.0.0"
+    "@bugsplat/react": "^2.1.0",
+    "base-64": "^1.0.0"
   },
   "devDependencies": {
+    "@types/base-64": "^1.0.2",
     "@types/react": "~19.1.1",
     "expo": "~55.0.8",
     "expo-module-scripts": "^55.0.2",
@@ -47,10 +49,10 @@
     "ts-jest": "^29.4.6"
   },
   "peerDependencies": {
+    "@bugsplat/symbol-upload": "*",
     "expo": "*",
     "react": "*",
-    "react-native": "*",
-    "@bugsplat/symbol-upload": "*"
+    "react-native": "*"
   },
   "peerDependenciesMeta": {
     "@bugsplat/symbol-upload": {

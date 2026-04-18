@@ -1,4 +1,10 @@
-import { type BugSplat, init as initReact } from '@bugsplat/react';
+import {
+  appScope,
+  type BugSplat,
+  type BugSplatAttachment,
+  init as initReact,
+} from '@bugsplat/react';
+import { encode as base64Encode } from 'base-64';
 
 import type {
   BugSplatFeedbackOptions,
@@ -13,6 +19,24 @@ export const nativeAvailable = BugsplatExpoModule != null;
 
 let jsClient: BugSplat | null = null;
 const jsAttributes: Record<string, string> = {};
+
+/**
+ * React Native-compatible componentStack attachment builder. RN's FormData
+ * polyfill can't serialize browser `Blob`s, so we hand it a `data:` URI inside
+ * the `{ uri, type }` file-ref shape that RN's fetch uploads as a real file
+ * part.
+ */
+function rnCreateComponentStackAttachment(
+  componentStack: string
+): BugSplatAttachment {
+  return {
+    filename: 'componentStack.txt',
+    data: {
+      uri: `data:text/plain;base64,${base64Encode(componentStack)}`,
+      type: 'text/plain',
+    },
+  };
+}
 
 function applyDefaults(client: BugSplat, options?: BugSplatInitOptions): void {
   if (options?.appKey) client.setDefaultAppKey(options.appKey);
@@ -42,6 +66,11 @@ export async function init(
   version: string,
   options?: BugSplatInitOptions
 ): Promise<void> {
+  // Tell bugsplat-react's ErrorBoundary how to build its componentStack
+  // attachment on React Native. Set synchronously before any awaits so an
+  // ErrorBoundary that catches during startup doesn't race the default.
+  appScope.setCreateComponentStackAttachment(rnCreateComponentStackAttachment);
+
   if (nativeAvailable) {
     await BugsplatExpoModule!.init(database, application, version, options as Record<string, unknown>);
     initReact({ database, application, version })((client) => {
