@@ -1,5 +1,10 @@
-import { appScope, type BugSplat, init as initReact } from '@bugsplat/react';
-import type { BugSplatAttachment } from 'bugsplat';
+import {
+  appScope,
+  type BugSplat,
+  type BugSplatAttachment,
+  init as initReact,
+} from '@bugsplat/react';
+import { encode as base64Encode } from 'base-64';
 
 import type {
   BugSplatFeedbackOptions,
@@ -15,18 +20,6 @@ export const nativeAvailable = BugsplatExpoModule != null;
 let jsClient: BugSplat | null = null;
 const jsAttributes: Record<string, string> = {};
 
-function utf8ToBase64(text: string): string {
-  const NodeBuffer = (
-    globalThis as {
-      Buffer?: { from(s: string, enc: string): { toString(enc: string): string } };
-    }
-  ).Buffer;
-  if (NodeBuffer) {
-    return NodeBuffer.from(text, 'utf-8').toString('base64');
-  }
-  return btoa(unescape(encodeURIComponent(text)));
-}
-
 /**
  * React Native-compatible componentStack attachment builder. RN's FormData
  * polyfill can't serialize browser `Blob`s, so we hand it a `data:` URI inside
@@ -39,7 +32,7 @@ function rnCreateComponentStackAttachment(
   return {
     filename: 'componentStack.txt',
     data: {
-      uri: `data:text/plain;base64,${utf8ToBase64(componentStack)}`,
+      uri: `data:text/plain;base64,${base64Encode(componentStack)}`,
       type: 'text/plain',
     },
   };
