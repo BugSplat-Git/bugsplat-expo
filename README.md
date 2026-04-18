@@ -227,7 +227,7 @@ A few notes on this pattern:
 - `post()` is **not** idempotent. The `useRef` guard is the consumer's responsibility — without it, a fast double-tap (or "Submit then Dismiss") would fire two reports. `useRef` updates synchronously, so it guards taps that land in the same render window; `useState` would not.
 - `componentStack` is wrapped in `Uint8Array` via `TextEncoder` (works on both web and native via Hermes). If you only target web, `new Blob([componentStack], { type: 'text/plain' })` reads more naturally.
 - `attributes` becomes a queryable column in the BugSplat dashboard — useful for filtering crashes by route, feature flag, build channel, etc.
-- If posting fails and you want retry, catch errors from `post()` and reset `posted.current` accordingly. The recipe doesn't show this to keep it minimal.
+- If posting fails and you want retry, check the `success` property of the value returned by `post()` and reset `posted.current` accordingly. The recipe doesn't show this to keep it minimal.
 
 ### User Feedback
 
