@@ -1,3 +1,5 @@
+jest.mock('expo-blob', () => {});
+
 const mockModule = {
   init: jest.fn().mockResolvedValue(undefined),
   setUser: jest.fn(),
@@ -30,13 +32,8 @@ const mockInitReact = jest.fn().mockReturnValue(
   }
 );
 
-const mockSetCreateComponentStackAttachment = jest.fn();
-
 jest.mock('@bugsplat/react', () => ({
   init: mockInitReact,
-  appScope: {
-    setCreateComponentStackAttachment: mockSetCreateComponentStackAttachment,
-  },
 }));
 
 import {
@@ -72,17 +69,6 @@ describe('BugsplatExpo (native)', () => {
         application: 'MyApp',
         version: '1.0.0',
       });
-    });
-
-    it('installs an RN-compatible componentStack attachment builder on appScope', async () => {
-      await init('test-db', 'MyApp', '1.0.0');
-      expect(mockSetCreateComponentStackAttachment).toHaveBeenCalledTimes(1);
-      const [builder] = mockSetCreateComponentStackAttachment.mock.calls[0];
-      const attachment = builder('at BuggyComponent\n  at ErrorBoundary');
-      expect(attachment.filename).toBe('componentStack.txt');
-      expect(attachment.data).toBeInstanceOf(File);
-      expect((attachment.data as File).name).toBe('componentStack.txt');
-      expect((attachment.data as File).type).toBe('text/plain');
     });
 
     it('passes options to native init', async () => {

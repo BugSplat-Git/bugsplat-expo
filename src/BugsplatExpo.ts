@@ -1,7 +1,6 @@
+import 'expo-blob';
 import {
-  appScope,
   type BugSplat,
-  type BugSplatAttachment,
   init as initReact,
 } from '@bugsplat/react';
 import type {
@@ -17,15 +16,6 @@ export const nativeAvailable = BugsplatExpoModule != null;
 
 let jsClient: BugSplat | null = null;
 const jsAttributes: Record<string, string> = {};
-
-function rnCreateComponentStackAttachment(
-  componentStack: string
-): BugSplatAttachment {
-  return {
-    filename: 'componentStack.txt',
-    data: new File([componentStack], 'componentStack.txt', { type: 'text/plain' }),
-  };
-}
 
 function applyDefaults(client: BugSplat, options?: BugSplatInitOptions): void {
   if (options?.appKey) client.setDefaultAppKey(options.appKey);
@@ -55,11 +45,6 @@ export async function init(
   version: string,
   options?: BugSplatInitOptions
 ): Promise<void> {
-  // Tell bugsplat-react's ErrorBoundary how to build its componentStack
-  // attachment on React Native. Set synchronously before any awaits so an
-  // ErrorBoundary that catches during startup doesn't race the default.
-  appScope.setCreateComponentStackAttachment(rnCreateComponentStackAttachment);
-
   if (nativeAvailable) {
     await BugsplatExpoModule!.init(database, application, version, options as Record<string, unknown>);
     initReact({ database, application, version })((client) => {
