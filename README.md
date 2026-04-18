@@ -201,7 +201,7 @@ function ErrorFallback({ error, componentStack, resetErrorBoundary }: FallbackPr
       attachments: componentStack
         ? [{
             filename: 'componentStack.txt',
-            data: new TextEncoder().encode(componentStack),
+            data: new Blob([componentStack], { type: 'text/plain' }),
           }]
         : undefined,
     });
@@ -225,7 +225,7 @@ function ErrorFallback({ error, componentStack, resetErrorBoundary }: FallbackPr
 A few notes on this pattern:
 
 - `post()` is **not** idempotent. The `useRef` guard is the consumer's responsibility — without it, a fast double-tap (or "Submit then Dismiss") would fire two reports. `useRef` updates synchronously, so it guards taps that land in the same render window; `useState` would not.
-- `componentStack` is wrapped in `Uint8Array` via `TextEncoder` (works on both web and native via Hermes). If you only target web, `new Blob([componentStack], { type: 'text/plain' })` reads more naturally.
+- `componentStack` is wrapped in a `Blob`. This works cross-platform because `@bugsplat/expo` includes `expo-blob`, which polyfills the web-standard `Blob` API on native.
 - `attributes` becomes a queryable column in the BugSplat dashboard — useful for filtering crashes by route, feature flag, build channel, etc.
 - If posting fails and you want retry, check the `success` property of the value returned by `post()` and reset `posted.current` accordingly. The recipe doesn't show this to keep it minimal.
 
