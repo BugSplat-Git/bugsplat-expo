@@ -3,7 +3,7 @@ export type {
   BugSplatOptions,
   BugSplatOptions as BugSplatPostOptions,
   BugSplatOptions as BugSplatFeedbackOptions,
-} from 'bugsplat';
+} from '@bugsplat/react';
 
 /**
  * Options for initializing BugSplat.

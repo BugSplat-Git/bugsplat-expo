@@ -181,52 +181,53 @@ The fallback prop accepts a React node or a render function:
 
 By default, `<ErrorBoundary>` posts to BugSplat the moment it catches an error. If you'd rather give the user a chance to describe what they were doing first — and bundle that into a single report instead of two — set `disablePost` on the boundary and post manually from your fallback:
 
+`<ErrorBoundary>` is a class component, so hooks can't live directly inside its `fallback` render prop — extract the fallback into its own functional component:
+
 ```tsx
-import { useState } from 'react';
-import { ErrorBoundary, post } from '@bugsplat/expo';
+import { useRef, useState } from 'react';
+import { ErrorBoundary, post, type FallbackProps } from '@bugsplat/expo';
 import { Text, TextInput, Button, View } from 'react-native';
 
-<ErrorBoundary
-  disablePost
-  fallback={({ error, componentStack, resetErrorBoundary }) => {
-    const [description, setDescription] = useState('');
-    const [posted, setPosted] = useState(false);
+function ErrorFallback({ error, componentStack, resetErrorBoundary }: FallbackProps) {
+  const [description, setDescription] = useState('');
+  const posted = useRef(false);
 
-    const submit = async () => {
-      if (posted) return;
-      setPosted(true);
-      await post(error, {
-        description,
-        attributes: { route: 'tasks/123' },
-        attachments: componentStack
-          ? [{
-              filename: 'componentStack.txt',
-              data: new TextEncoder().encode(componentStack),
-            }]
-          : undefined,
-      });
-    };
+  const submit = async () => {
+    if (posted.current) return;
+    posted.current = true;
+    await post(error, {
+      description,
+      attributes: { route: 'tasks/123' },
+      attachments: componentStack
+        ? [{
+            filename: 'componentStack.txt',
+            data: new TextEncoder().encode(componentStack),
+          }]
+        : undefined,
+    });
+  };
 
-    return (
-      <View>
-        <Text>Something went wrong: {error.message}</Text>
-        <TextInput value={description} onChangeText={setDescription} />
-        <Button title="Submit" onPress={submit} />
-        <Button title="Dismiss" onPress={() => { submit(); resetErrorBoundary(); }} />
-      </View>
-    );
-  }}
->
+  return (
+    <View>
+      <Text>Something went wrong: {error.message}</Text>
+      <TextInput value={description} onChangeText={setDescription} />
+      <Button title="Submit" onPress={submit} />
+      <Button title="Dismiss" onPress={() => { submit(); resetErrorBoundary(); }} />
+    </View>
+  );
+}
+
+<ErrorBoundary disablePost fallback={(props) => <ErrorFallback {...props} />}>
   <App />
 </ErrorBoundary>
 ```
 
 A few notes on this pattern:
 
-- `post()` is **not** idempotent. The `posted` flag in the example is the consumer's responsibility — without it, "Submit then Dismiss" would fire two reports.
+- `post()` is **not** idempotent. The `useRef` guard is the consumer's responsibility — without it, a fast double-tap (or "Submit then Dismiss") would fire two reports. `useRef` updates synchronously, so it guards taps that land in the same render window; `useState` would not.
 - `componentStack` is wrapped in `Uint8Array` via `TextEncoder` (works on both web and native via Hermes). If you only target web, `new Blob([componentStack], { type: 'text/plain' })` reads more naturally.
 - `attributes` becomes a queryable column in the BugSplat dashboard — useful for filtering crashes by route, feature flag, build channel, etc.
-- If posting fails and you want retry, catch errors from `post()` and reset `posted` accordingly. The recipe doesn't show this to keep it minimal.
+- If posting fails and you want retry, catch errors from `post()` and reset `posted.current` accordingly. The recipe doesn't show this to keep it minimal.
 
 ### User Feedback
 
