@@ -1,4 +1,5 @@
-import { type BugSplat, init as initReact } from '@bugsplat/react';
+import { appScope, type BugSplat, init as initReact } from '@bugsplat/react';
+import type { BugSplatAttachment } from 'bugsplat';
 
 import type {
   BugSplatFeedbackOptions,
@@ -13,6 +14,36 @@ export const nativeAvailable = BugsplatExpoModule != null;
 
 let jsClient: BugSplat | null = null;
 const jsAttributes: Record<string, string> = {};
+
+function utf8ToBase64(text: string): string {
+  const NodeBuffer = (
+    globalThis as {
+      Buffer?: { from(s: string, enc: string): { toString(enc: string): string } };
+    }
+  ).Buffer;
+  if (NodeBuffer) {
+    return NodeBuffer.from(text, 'utf-8').toString('base64');
+  }
+  return btoa(unescape(encodeURIComponent(text)));
+}
+
+/**
+ * React Native-compatible componentStack attachment builder. RN's FormData
+ * polyfill can't serialize browser `Blob`s, so we hand it a `data:` URI inside
+ * the `{ uri, type }` file-ref shape that RN's fetch uploads as a real file
+ * part.
+ */
+function rnCreateComponentStackAttachment(
+  componentStack: string
+): BugSplatAttachment {
+  return {
+    filename: 'componentStack.txt',
+    data: {
+      uri: `data:text/plain;base64,${utf8ToBase64(componentStack)}`,
+      type: 'text/plain',
+    },
+  };
+}
 
 function applyDefaults(client: BugSplat, options?: BugSplatInitOptions): void {
   if (options?.appKey) client.setDefaultAppKey(options.appKey);
@@ -42,6 +73,11 @@ export async function init(
   version: string,
   options?: BugSplatInitOptions
 ): Promise<void> {
+  // Tell bugsplat-react's ErrorBoundary how to build its componentStack
+  // attachment on React Native. Set synchronously before any awaits so an
+  // ErrorBoundary that catches during startup doesn't race the default.
+  appScope.setCreateComponentStackAttachment(rnCreateComponentStackAttachment);
+
   if (nativeAvailable) {
     await BugsplatExpoModule!.init(database, application, version, options as Record<string, unknown>);
     initReact({ database, application, version })((client) => {
