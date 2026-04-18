@@ -70,5 +70,8 @@ build/
 plugin/build/
 plugin/tsconfig.tsbuildinfo
 
+# Tarballs
+*.tgz
+
 # Playwright
 .playwright-mcp/
