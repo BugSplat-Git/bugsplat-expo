@@ -7,11 +7,6 @@ export interface BugsplatExpoNativeModule {
     version: string,
     options?: Record<string, unknown>
   ): Promise<void>;
-  post(
-    message: string,
-    callstack: string,
-    options?: Record<string, unknown>
-  ): Promise<{ success: boolean; error?: string }>;
   setUser(name: string, email: string): void;
   setAttribute(key: string, value: string): void;
   removeAttribute(key: string): void;

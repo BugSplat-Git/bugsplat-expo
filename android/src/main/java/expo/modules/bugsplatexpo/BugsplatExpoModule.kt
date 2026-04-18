@@ -6,10 +6,6 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.exception.Exceptions
 import com.bugsplat.android.BugSplatBridge
-import java.io.OutputStreamWriter
-import java.net.HttpURLConnection
-import java.net.URL
-import java.util.UUID
 
 class BugsplatExpoModule : Module() {
   private var database: String = ""
@@ -69,88 +65,6 @@ class BugsplatExpoModule : Module() {
       latch.await()
       initError?.let { throw it }
       initialized = true
-    }
-
-    AsyncFunction("post") { message: String, callstack: String, options: Map<String, Any>? ->
-      val postDatabase = database
-      val postApp = applicationName
-      val postVersion = applicationVersion
-      var postAppKey = appKey
-      var postUser = userName
-      var postEmail = userEmail
-      var postDescription = ""
-      val postAttributes = attributes.toMutableMap()
-
-      options?.let { opts ->
-        (opts["appKey"] as? String)?.let { postAppKey = it }
-        (opts["user"] as? String)?.let { postUser = it }
-        (opts["email"] as? String)?.let { postEmail = it }
-        (opts["description"] as? String)?.let { postDescription = it }
-        @Suppress("UNCHECKED_CAST")
-        (opts["attributes"] as? Map<String, String>)?.let { postAttributes.putAll(it) }
-      }
-
-      try {
-        val url = URL("https://$postDatabase.bugsplat.com/post/js/")
-        val boundary = UUID.randomUUID().toString()
-        val connection = url.openConnection() as HttpURLConnection
-        connection.requestMethod = "POST"
-        connection.doOutput = true
-        connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-
-        val outputStream = connection.outputStream
-
-        fun writeField(name: String, value: String) {
-          val header = "--$boundary\r\nContent-Disposition: form-data; name=\"$name\"\r\n\r\n"
-          outputStream.write(header.toByteArray())
-          outputStream.write(value.toByteArray())
-          outputStream.write("\r\n".toByteArray())
-        }
-
-        fun writeFile(filename: String, data: ByteArray) {
-          val header = "--$boundary\r\nContent-Disposition: form-data; name=\"$filename\"; filename=\"$filename\"\r\nContent-Type: application/octet-stream\r\n\r\n"
-          outputStream.write(header.toByteArray())
-          outputStream.write(data)
-          outputStream.write("\r\n".toByteArray())
-        }
-
-        writeField("database", postDatabase)
-        writeField("appName", postApp)
-        writeField("appVersion", postVersion)
-        writeField("appKey", postAppKey)
-        writeField("user", postUser)
-        writeField("email", postEmail)
-        writeField("description", postDescription)
-        writeField("callstack", callstack)
-
-        if (postAttributes.isNotEmpty()) {
-          val json = org.json.JSONObject(postAttributes as Map<*, *>).toString()
-          writeField("attributes", json)
-        }
-
-        @Suppress("UNCHECKED_CAST")
-        (options?.get("attachments") as? List<Map<String, Any>>)?.forEach { attachment ->
-          val filename = attachment["filename"] as? String ?: return@forEach
-          val dataString = attachment["data"] as? String ?: return@forEach
-          val data = android.util.Base64.decode(dataString, android.util.Base64.DEFAULT)
-          writeFile(filename, data)
-        }
-
-        outputStream.write("--$boundary--\r\n".toByteArray())
-        outputStream.flush()
-        outputStream.close()
-
-        val responseCode = connection.responseCode
-        connection.disconnect()
-
-        if (responseCode == 200) {
-          mapOf("success" to true)
-        } else {
-          mapOf("success" to false, "error" to "HTTP $responseCode")
-        }
-      } catch (e: Exception) {
-        mapOf("success" to false, "error" to (e.message ?: "Unknown error"))
-      }
     }
 
     Function("setUser") { name: String, email: String ->

@@ -93,53 +93,14 @@ export async function init(
 }
 
 /**
- * Serialize attachment data to base64 for the native bridge.
- * Accepts Blob, Uint8Array, or the RN file-ref shape from
- * rnCreateComponentStackAttachment.
- */
-async function serializeAttachmentsForNative(
-  attachments: BugSplatPostOptions['attachments']
-): Promise<Array<{ filename: string; data: string }> | undefined> {
-  if (!attachments?.length) return undefined;
-  return Promise.all(
-    attachments.map(async (att) => {
-      if (typeof att.data === 'string') {
-        return { filename: att.filename, data: base64Encode(att.data) };
-      }
-      if (att.data instanceof Uint8Array) {
-        let binary = '';
-        for (let i = 0; i < att.data.length; i++) {
-          binary += String.fromCharCode(att.data[i]);
-        }
-        return { filename: att.filename, data: base64Encode(binary) };
-      }
-      if (typeof Blob !== 'undefined' && att.data instanceof Blob) {
-        const text = await att.data.text();
-        return { filename: att.filename, data: base64Encode(text) };
-      }
-      return { filename: att.filename, data: '' };
-    })
-  );
-}
-
-/**
  * Manually post an error to BugSplat.
- * Uses native code when available, otherwise falls back to JS HTTP transport.
+ * Always uses the JS client's HTTP transport — the native bridge handles
+ * native crashes (Crashpad / PLCrashReporter), not JS-caught errors.
  */
 export async function post(
   error: Error | string,
   options?: BugSplatPostOptions
 ): Promise<BugSplatPostResult> {
-  if (nativeAvailable) {
-    const message = error instanceof Error ? error.message : error;
-    const callstack = error instanceof Error ? (error.stack ?? message) : message;
-    const nativeOptions: Record<string, unknown> = { ...options };
-    if (options?.attachments) {
-      nativeOptions.attachments = await serializeAttachmentsForNative(options.attachments);
-    }
-    return BugsplatExpoModule!.post(message, callstack, nativeOptions);
-  }
-
   if (!jsClient) {
     return { success: false, error: 'BugSplat has not been initialized. Call init() first.' };
   }
