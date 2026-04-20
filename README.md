@@ -146,6 +146,24 @@ import { crash } from '@bugsplat/expo';
 crash();
 ```
 
+### Hang Detection (ANR)
+
+On Android 11+ (API 30+), `@bugsplat/expo` automatically detects and reports Application Not Responding (ANR) events. Historical ANRs from previous app sessions are checked each time `init()` is called and reported with `crash_type = Android.ANR`. No additional configuration is required.
+
+Hang detection for iOS is not yet supported and will land in a future release.
+
+To test ANR detection end-to-end, call `hang()` — it blocks the native main thread in an infinite loop so the system flags it as an ANR:
+
+```typescript
+import { hang } from '@bugsplat/expo';
+
+// Android only — blocks the UI thread until the system ANRs.
+// iOS / Expo Go / web log a warning instead.
+hang();
+```
+
+Testing ANRs requires a **release build** on a physical device or a `google_apis` emulator image — debug builds and the Play Store emulator image intercept or suppress ANR exit info.
+
 ### Error Boundary
 
 Wrap your component tree in `<ErrorBoundary>` to catch React render errors and report them to BugSplat automatically. Works identically on iOS, Android, and Web.
@@ -316,6 +334,10 @@ Set a custom attribute. Note: not supported on web.
 ### `crash()`
 
 Trigger a test crash to verify integration.
+
+### `hang()`
+
+Trigger a test hang by blocking the native main thread. Used to verify ANR detection on Android. Android-only — logs a warning on iOS, Expo Go, and web.
 
 ## Expo Go
 

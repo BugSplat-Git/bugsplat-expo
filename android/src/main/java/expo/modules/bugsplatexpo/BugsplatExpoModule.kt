@@ -98,5 +98,14 @@ class BugsplatExpoModule : Module() {
     Function("crash") {
       BugSplatBridge.crash()
     }
+
+    Function("hang") {
+      // BugSplatBridge.hang() blocks the calling thread in a native infinite
+      // loop — ANR detection requires hanging the main/UI thread, so dispatch
+      // there and return immediately to avoid blocking the JS bridge.
+      appContext.currentActivity?.runOnUiThread {
+        BugSplatBridge.hang()
+      } ?: throw Exceptions.MissingActivity()
+    }
   }
 }

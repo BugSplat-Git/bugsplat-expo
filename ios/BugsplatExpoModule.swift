@@ -95,5 +95,9 @@ public class BugsplatExpoModule: Module {
       let array = NSArray()
       _ = array.object(at: 99)
     }
+
+    Function("hang") {
+      NSLog("[BugsplatExpo] hang() is not yet supported on iOS — tracking in bugsplat-apple.")
+    }
   }
 }

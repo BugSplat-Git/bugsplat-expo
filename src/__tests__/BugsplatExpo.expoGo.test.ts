@@ -41,6 +41,7 @@ import {
   setAttribute,
   removeAttribute,
   crash,
+  hang,
 } from '../BugsplatExpo';
 
 describe('BugsplatExpo (Expo Go / JS fallback)', () => {
@@ -223,6 +224,15 @@ describe('BugsplatExpo (Expo Go / JS fallback)', () => {
       crash();
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('crash() requires native modules')
+      );
+    });
+  });
+
+  describe('hang', () => {
+    it('logs a warning instead of hanging', () => {
+      hang();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('hang() requires native modules')
       );
     });
   });
