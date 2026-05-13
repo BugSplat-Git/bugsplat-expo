@@ -58,6 +58,11 @@
       "optional": true
     }
   },
+  "overrides": {
+    "postcss": "^8.5.10",
+    "http-proxy-agent": "^7.0.2",
+    "@tootallnate/once": "^3.0.1"
+  },
   "jest": {
     "roots": [
       "<rootDir>/src"
