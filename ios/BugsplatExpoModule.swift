@@ -92,11 +92,14 @@ public class BugsplatExpoModule: Module {
     }
 
     Function("crash") {
-      // fatalError is documented as unrecoverable and is preserved by the Swift
-      // Release optimizer. The earlier NSArray.object(at: 99) trick was being
-      // optimized out (discarded result + ObjC-bridged side effect the Swift
-      // optimizer doesn't model), making the Crash card a no-op in Release.
-      fatalError("BugSplat test crash")
+      // Force-unwrap of nil — the pattern bugsplat-apple's own samples use.
+      // Produces a Swift runtime trap that PLCrashReporter catches and
+      // symbolicates cleanly. Preserved by the Release optimizer (force-unwrap
+      // is treated as observable). The earlier NSArray.object(at: 99) trick
+      // was being optimized out (discarded result + ObjC-bridged side effect
+      // the Swift optimizer doesn't model).
+      let prop: Int? = nil
+      _ = prop!
     }
 
     Function("hang") {
