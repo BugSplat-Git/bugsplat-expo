@@ -1,41 +1,27 @@
 import { useEffect, useRef } from 'react';
-import { Accelerometer } from 'expo-sensors';
-
-interface UseShakeOptions {
-  /** g-force deviation from rest (1g) needed to count as a shake. Default 1.2. */
-  threshold?: number;
-  /** Milliseconds to ignore further shakes after firing. Default 1500. */
-  cooldownMs?: number;
-  /** Polling interval for the accelerometer. Default 100ms. */
-  intervalMs?: number;
-  /** Set false to temporarily stop listening (e.g. while a modal is open). */
-  enabled?: boolean;
-}
+import RNShake from 'react-native-shake';
 
 /**
- * Fires `onShake` when the device experiences a high-g event. Uses
- * expo-sensors Accelerometer and a simple magnitude-over-threshold heuristic
- * with cooldown to avoid duplicate fires from a single shake.
+ * Fires `onShake` when the device's shake gesture is detected.
+ *
+ * Backed by react-native-shake — on iOS it listens for
+ * UIEventSubtypeMotionShake (works in the iOS Simulator via
+ * Device → Shake, Ctrl+⌘+Z); on Android it uses the platform accelerometer
+ * with native threshold + debouncing.
+ *
+ * `enabled: false` temporarily detaches the listener (e.g. while a modal is
+ * already open so the user's input shake can't bounce them right back into it).
  */
-export function useShake(onShake: () => void, options: UseShakeOptions = {}): void {
-  const { threshold = 1.2, cooldownMs = 1500, intervalMs = 100, enabled = true } = options;
-  const lastFireRef = useRef(0);
+export function useShake(onShake: () => void, options: { enabled?: boolean } = {}): void {
+  const { enabled = true } = options;
   const onShakeRef = useRef(onShake);
   onShakeRef.current = onShake;
 
   useEffect(() => {
     if (!enabled) return;
-    Accelerometer.setUpdateInterval(intervalMs);
-    const sub = Accelerometer.addListener(({ x, y, z }: { x: number; y: number; z: number }) => {
-      // Accelerometer values are in g-units; magnitude ≈ 1 at rest (gravity).
-      // |magnitude - 1| isolates the shake component from gravity.
-      const magnitude = Math.sqrt(x * x + y * y + z * z);
-      if (Math.abs(magnitude - 1) < threshold) return;
-      const now = Date.now();
-      if (now - lastFireRef.current < cooldownMs) return;
-      lastFireRef.current = now;
+    const sub = RNShake.addListener(() => {
       onShakeRef.current();
     });
     return () => sub.remove();
-  }, [enabled, intervalMs, threshold, cooldownMs]);
+  }, [enabled]);
 }
