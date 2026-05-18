@@ -155,9 +155,9 @@ import { hang } from '@bugsplat/expo';
 
 // Freezes the UI thread in a native loop. On Android the system ANR detector
 // fires after ~5s of unresponsive input and BugSplat captures a dump with
-// symbolicated native frames. On iOS the main thread blocks indefinitely; with
-// the Apple SDK's hang tracker installed, a fatal-hang report is persisted and
-// uploaded on next launch — without it, force-quit captures the freeze.
+// symbolicated native frames. On iOS the bundled BugSplat-Apple hang tracker
+// persists a fatal-hang report after the main thread stays unresponsive past
+// its threshold (~2s by default); the report uploads on the next app launch.
 hang();
 ```
 
@@ -377,7 +377,7 @@ Trigger a test crash to verify integration.
 
 ### `hang()`
 
-Freeze the UI thread in a native loop. On Android this produces a real ANR with symbolicated native frames; on iOS the main thread blocks indefinitely (use force-quit to capture, or rely on the Apple SDK hang tracker if available). Requires a development build — no-op in Expo Go.
+Freeze the UI thread in a native loop. On Android this produces a real ANR with symbolicated native frames; on iOS the BugSplat-Apple hang tracker persists a fatal-hang report after the unresponsiveness threshold (~2s) and uploads it on next launch. Requires a development build — no-op in Expo Go.
 
 ## Expo Go
 
@@ -403,13 +403,16 @@ npx expo run:android --variant release
 
 ### Testing Native Hangs (ANRs)
 
-`hang()` blocks the main thread in a native loop — on Android the system ANR detector fires after ~5 seconds of unresponsive input and BugSplat captures a dump with native frames. On iOS the freeze is indefinite; force-quit captures it (and the Apple SDK's hang tracker, when present, persists a fatal-hang report automatically).
+`hang()` blocks the main thread in a native loop. The handling differs slightly per platform:
+
+- **Android**: the system ANR detector fires after ~5 seconds of unresponsive input and BugSplat captures a dump with symbolicated native frames immediately.
+- **iOS**: the bundled BugSplat-Apple hang tracker persists a fatal-hang report once the main thread stays unresponsive past its threshold (~2s). The report uploads on the next app launch.
 
 To trigger and verify:
 
 1. Call `hang()` (e.g. from a debug button).
 2. **Android**: tap the screen a few times — the system "App not responding" dialog appears, dump is captured.
-3. **iOS**: force-quit from the app switcher.
+3. **iOS**: force-quit from the app switcher once the UI freezes (or wait for the OS watchdog).
 4. Relaunch the app. The hang report uploads on next launch alongside any pending crash reports.
 
 ## Troubleshooting

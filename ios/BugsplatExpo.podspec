@@ -25,11 +25,18 @@ Pod::Spec.new do |s|
   }
 
   s.prepare_command = <<-CMD
+    BUGSPLAT_APPLE_VERSION="v3.2.0"
+    VERSION_SENTINEL="Frameworks/.bugsplat-version"
     mkdir -p Frameworks
-    if [ ! -d "Frameworks/BugSplat.xcframework" ]; then
-      curl -sL -o BugSplat.xcframework.zip "https://github.com/BugSplat-Git/bugsplat-apple/releases/download/v3.1.1/BugSplat.xcframework.zip"
+    # Re-download when the cached framework is missing OR when the cached
+    # version doesn't match the version we want — earlier we only checked
+    # presence, so consumers stuck with stale frameworks after a version bump.
+    if [ ! -d "Frameworks/BugSplat.xcframework" ] || [ "$(cat "$VERSION_SENTINEL" 2>/dev/null)" != "$BUGSPLAT_APPLE_VERSION" ]; then
+      rm -rf Frameworks/BugSplat.xcframework
+      curl -sL -o BugSplat.xcframework.zip "https://github.com/BugSplat-Git/bugsplat-apple/releases/download/${BUGSPLAT_APPLE_VERSION}/BugSplat.xcframework.zip"
       unzip -o BugSplat.xcframework.zip -d Frameworks
       rm -f BugSplat.xcframework.zip
+      echo "$BUGSPLAT_APPLE_VERSION" > "$VERSION_SENTINEL"
     fi
     # Remove non-iOS slices — macOS uses Versions/A/ bundle layout which
     # CocoaPods misidentifies as static, causing a "contains both static
