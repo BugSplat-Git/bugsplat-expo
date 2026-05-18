@@ -1,5 +1,4 @@
-import { crash, hang, init, post, postFeedback } from '@bugsplat/expo';
-import Constants from 'expo-constants';
+import { crash, hang, init, nativeAvailable, post, postFeedback } from '@bugsplat/expo';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AppState,
@@ -15,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import appJson from './app.json';
 import {
   ActivityEntry,
   ActivityType,
@@ -23,11 +23,14 @@ import {
   recordActivity,
 } from './src/activity-log';
 
-// Single source of truth: pull the database from the @bugsplat/expo plugin
-// config in app.json. The plugin throws at prebuild if it's missing, so by
-// the time this code runs the value is guaranteed present — but we narrow
-// the type with an explicit check so the demo shows the resolution path.
-const bugsplatPlugin = (Constants.expoConfig?.plugins ?? []).find(
+// Single source of truth: read directly from app.json. Metro bundles JSON
+// natively, and the values we need are static — so we skip expo-constants
+// (which had a Kotlin override mismatch with expo-modules-core 55.0.17 on
+// Android). The plugin throws at prebuild if any of these are missing, so
+// by the time this runs they're guaranteed present.
+type PluginEntry = string | [string, Record<string, unknown>?];
+const pluginEntries = (appJson.expo.plugins ?? []) as PluginEntry[];
+const bugsplatPlugin = pluginEntries.find(
   (entry): entry is [string, { database?: string }] =>
     Array.isArray(entry) && entry[0] === '@bugsplat/expo'
 );
@@ -43,11 +46,11 @@ const DATABASE: string = rawDatabase;
 //   - Android → applicationId  (= expo.android.package)
 // Version is shared: expo.version → MARKETING_VERSION (iOS) / versionName (Android).
 const rawAppName = Platform.select({
-  ios: Constants.expoConfig?.name,
-  android: Constants.expoConfig?.android?.package,
-  default: Constants.expoConfig?.name,
+  ios: appJson.expo.name,
+  android: appJson.expo.android?.package,
+  default: appJson.expo.name,
 });
-const rawAppVersion = Constants.expoConfig?.version;
+const rawAppVersion = appJson.expo.version;
 if (!rawAppName || !rawAppVersion) {
   throw new Error(
     '@bugsplat/expo: app.json must define expo.version, expo.name (iOS), and expo.android.package (Android)'
@@ -75,17 +78,28 @@ const COLORS = {
   activityHang: '#E5B142',
 };
 
+// crash() only produces a real native crash in a release build with the
+// native module loaded. In Expo Go or a dev build, RN's error boundary
+// swallows it as a JS error — disable the card so the label isn't a lie.
+const crashDisabled = __DEV__ || !nativeAvailable;
+
 const CARDS: Array<{
   key: ActivityType;
   icon: ReturnType<typeof require>;
   title: string;
   subtitle: string;
+  disabled?: boolean;
+  disabledHint?: string;
 }> = [
   {
     key: 'crash',
     icon: require('./assets/splat_crash.png'),
     title: 'Crash',
     subtitle: 'Native crash · stack + threads + memory',
+    disabled: crashDisabled,
+    disabledHint: !nativeAvailable
+      ? 'Native crash testing requires a development build (not Expo Go)'
+      : 'Native crash testing requires a release build',
   },
   {
     key: 'error',
@@ -257,17 +271,26 @@ export default function App() {
           <Text style={[styles.sectionHeader, { marginTop: 22 }]}>TRIGGER AN EVENT</Text>
 
           {CARDS.map((card) => (
-            <Pressable
-              key={card.key}
-              onPress={handlers[card.key]}
-              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-            >
-              <Image source={card.icon} style={styles.cardIcon} resizeMode="contain" />
-              <View style={styles.cardText}>
-                <Text style={styles.cardTitle}>{card.title}</Text>
-                <Text style={styles.cardSubtitle}>{card.subtitle}</Text>
-              </View>
-            </Pressable>
+            <View key={card.key}>
+              <Pressable
+                onPress={card.disabled ? undefined : handlers[card.key]}
+                disabled={card.disabled}
+                style={({ pressed }) => [
+                  styles.card,
+                  card.disabled && styles.cardDisabled,
+                  pressed && !card.disabled && styles.cardPressed,
+                ]}
+              >
+                <Image source={card.icon} style={styles.cardIcon} resizeMode="contain" />
+                <View style={styles.cardText}>
+                  <Text style={styles.cardTitle}>{card.title}</Text>
+                  <Text style={styles.cardSubtitle}>{card.subtitle}</Text>
+                </View>
+              </Pressable>
+              {card.disabled && card.disabledHint && (
+                <Text style={styles.cardDisabledHint}>{card.disabledHint}</Text>
+              )}
+            </View>
           ))}
 
           <View style={styles.recentCard}>
@@ -404,6 +427,14 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   cardPressed: { opacity: 0.7 },
+  cardDisabled: { opacity: 0.45 },
+  cardDisabledHint: {
+    marginTop: 6,
+    marginLeft: 4,
+    fontSize: 12,
+    color: COLORS.textTertiary,
+    fontStyle: 'italic',
+  },
   cardIcon: { width: 52, height: 52, marginRight: 16 },
   cardText: { flex: 1 },
   cardTitle: { fontSize: 17, fontWeight: '700', color: COLORS.textPrimary },
