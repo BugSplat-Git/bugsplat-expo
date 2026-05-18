@@ -2,7 +2,12 @@ import { useEffect, useRef } from 'react';
 import { Accelerometer } from 'expo-sensors';
 
 interface UseShakeOptions {
-  /** g-force deviation from rest (1g) needed to count as a shake. Default 1.2. */
+  /**
+   * g-force deviation from rest (1g) needed to count as a shake. Default 2.5
+   * (≈ 3.5g peak), tuned to require a deliberate shake while filtering out
+   * common false positives like setting the phone down on a hard surface
+   * (~2g impact spike) or quick pocket motion.
+   */
   threshold?: number;
   /** Milliseconds to ignore further shakes after firing. Default 1500. */
   cooldownMs?: number;
@@ -23,7 +28,7 @@ interface UseShakeOptions {
  * Extended Controls → Virtual sensors panel.
  */
 export function useShake(onShake: () => void, options: UseShakeOptions = {}): void {
-  const { threshold = 1.2, cooldownMs = 1500, intervalMs = 100, enabled = true } = options;
+  const { threshold = 2.5, cooldownMs = 1500, intervalMs = 100, enabled = true } = options;
   const lastFireRef = useRef(0);
   const onShakeRef = useRef(onShake);
   onShakeRef.current = onShake;
