@@ -1,7 +1,18 @@
-import { ConfigPlugin, withInfoPlist, withXcodeProject } from 'expo/config-plugins';
+import { ConfigPlugin, withDangerousMod, withInfoPlist, withXcodeProject } from 'expo/config-plugins';
+import * as fs from 'fs';
+import * as path from 'path';
 import type { BugSplatPluginOptions } from './types';
 
 const BUILD_PHASE_NAME = 'Upload symbols to BugSplat';
+const SOURCEMAP_MARKER = '# BugSplat: SOURCEMAP_FILE for JS symbolication';
+// Where Expo's bundle phase writes the composed Hermes source map. Anchored to
+// PROJECT_DIR (= the ios/ directory) because that variable is stable across all
+// build phases — DERIVED_FILE_DIR isn't (each phase can resolve it to a
+// different DerivedSources subdir), and CONFIGURATION_BUILD_DIR collides with
+// react-native-xcode.sh's PACKAGER_SOURCEMAP_FILE intermediate (which then
+// gets rm'd after compose, taking our output with it).
+const SOURCEMAP_DIR = '${PROJECT_DIR}/.bugsplat-sourcemaps';
+const SOURCEMAP_FILE_PATH = `${SOURCEMAP_DIR}/main.jsbundle.map`;
 
 export const withBugsplatIos: ConfigPlugin<BugSplatPluginOptions> = (config, props) => {
   // Only set BugSplatDatabase in Info.plist if explicitly provided
@@ -14,28 +25,36 @@ export const withBugsplatIos: ConfigPlugin<BugSplatPluginOptions> = (config, pro
 
   // Optionally add symbol upload build phase
   if (props.enableSymbolUpload) {
-    config = withSourcemapBuildSetting(config);
+    config = withSourcemapEnv(config);
     config = withBugsplatSymbolUpload(config, props);
   }
 
   return config;
 };
 
-// Expo's iOS bundle phase only emits a JS source map when SOURCEMAP_FILE is
-// present in the environment. Setting it as a Release-only build setting puts
-// it in the env for every phase of that configuration, so the composed
-// Hermes map is written to ${DERIVED_FILE_DIR}/main.jsbundle.map — exactly
-// where the symbol-upload phase below looks for it.
-const withSourcemapBuildSetting: ConfigPlugin = (config) => {
-  return withXcodeProject(config, (config) => {
-    const project = config.modResults;
-    project.updateBuildProperty(
-      'SOURCEMAP_FILE',
-      '"$(DERIVED_FILE_DIR)/main.jsbundle.map"',
-      'Release'
-    );
-    return config;
-  });
+// Append SOURCEMAP_FILE export to ios/.xcode.env, which the bundle phase
+// sources at the top of its script. Going through .xcode.env (rather than a
+// build setting) guarantees the export reaches Expo's react-native-xcode.sh
+// regardless of phase-local env scoping quirks. mkdir -p ensures
+// compose-source-maps.js doesn't fail trying to write into a missing dir.
+const withSourcemapEnv: ConfigPlugin = (config) => {
+  return withDangerousMod(config, [
+    'ios',
+    async (cfg) => {
+      const envPath = path.join(cfg.modRequest.platformProjectRoot, '.xcode.env');
+      const existing = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
+      if (existing.includes(SOURCEMAP_MARKER)) return cfg;
+      const block = [
+        '',
+        SOURCEMAP_MARKER,
+        `mkdir -p "${SOURCEMAP_DIR}"`,
+        `export SOURCEMAP_FILE="${SOURCEMAP_FILE_PATH}"`,
+        '',
+      ].join('\n');
+      fs.writeFileSync(envPath, existing + block);
+      return cfg;
+    },
+  ]);
 };
 
 export const buildIosUploadScript = (
@@ -70,20 +89,21 @@ export const buildIosUploadScript = (
     `    -d "\${DWARF_DSYM_FOLDER_PATH}" \\\\`,
     '    -f "**/*.dSYM"',
     '',
-    '  # 2) JS source maps (requires SOURCEMAP_FILE during the bundle phase;',
-    '  # Expo emits the map alongside main.jsbundle when configured)',
-    '  if ls "${DERIVED_FILE_DIR}"/*.js.map "${DERIVED_FILE_DIR}"/*.jsbundle.map 1>/dev/null 2>&1; then',
+    '  # 2) JS source maps — Expo writes the composed Hermes map here',
+    '  # via the SOURCEMAP_FILE export injected into .xcode.env by the plugin.',
+    `  SOURCEMAP_DIR="\${PROJECT_DIR}/.bugsplat-sourcemaps"`,
+    '  if ls "${SOURCEMAP_DIR}"/*.js.map "${SOURCEMAP_DIR}"/*.jsbundle.map 1>/dev/null 2>&1; then',
     `    npx --yes @bugsplat/symbol-upload \\\\`,
     `      -b "${database}" \\\\`,
     `      -a "${appName}" \\\\`,
     `      -v "${appVersion}" \\\\`,
     `      -i "$CLIENT_ID" \\\\`,
     `      -s "$CLIENT_SECRET" \\\\`,
-    `      -d "\${DERIVED_FILE_DIR}" \\\\`,
+    `      -d "$SOURCEMAP_DIR" \\\\`,
     '      -f "**/*.{js,jsbundle}.map"',
     '  else',
-    '    echo "warning: BugSplat — no JS source maps (*.js.map / *.jsbundle.map) found in ${DERIVED_FILE_DIR}; skipping upload."',
-    '    echo "  Set SOURCEMAP_FILE in your bundle build phase to enable JS symbolication."',
+    '    echo "warning: BugSplat — no JS source maps in ${SOURCEMAP_DIR}; skipping upload."',
+    '    echo "  Expected the bundle phase to write main.jsbundle.map here via SOURCEMAP_FILE."',
     '  fi',
     'fi',
   ].join('\\n');
