@@ -95,6 +95,16 @@ export const buildAndroidGradleTask = (props: BugSplatPluginOptions): string => 
     '    }',
     '}',
     '',
+    '// Auto-chain BugSplat uploads onto assembleRelease so a single Release',
+    '// build emits + uploads native .so symbols and JS source maps. Debug',
+    '// builds skip on purpose (creds may not be set, and dev symbols would',
+    '// just flood the dashboard).',
+    'tasks.whenTaskAdded { task ->',
+    '    if (task.name == "assembleRelease") {',
+    '        task.finalizedBy("uploadBugsplatSymbols")',
+    '    }',
+    '}',
+    '',
   ].join('\n');
 };
 

@@ -14,10 +14,28 @@ export const withBugsplatIos: ConfigPlugin<BugSplatPluginOptions> = (config, pro
 
   // Optionally add symbol upload build phase
   if (props.enableSymbolUpload) {
+    config = withSourcemapBuildSetting(config);
     config = withBugsplatSymbolUpload(config, props);
   }
 
   return config;
+};
+
+// Expo's iOS bundle phase only emits a JS source map when SOURCEMAP_FILE is
+// present in the environment. Setting it as a Release-only build setting puts
+// it in the env for every phase of that configuration, so the composed
+// Hermes map is written to ${DERIVED_FILE_DIR}/main.jsbundle.map — exactly
+// where the symbol-upload phase below looks for it.
+const withSourcemapBuildSetting: ConfigPlugin = (config) => {
+  return withXcodeProject(config, (config) => {
+    const project = config.modResults;
+    project.updateBuildProperty(
+      'SOURCEMAP_FILE',
+      '"$(DERIVED_FILE_DIR)/main.jsbundle.map"',
+      'Release'
+    );
+    return config;
+  });
 };
 
 export const buildIosUploadScript = (props: BugSplatPluginOptions): string => {
