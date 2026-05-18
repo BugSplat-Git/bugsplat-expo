@@ -17,6 +17,19 @@ export interface BugSplatInitOptions {
   userEmail?: string;
   /** Whether to auto-submit crash reports without user prompt (iOS only, default: true) */
   autoSubmitCrashReport?: boolean;
+  /**
+   * Enable native hang detection on iOS (default: true). When enabled,
+   * BugSplat-Apple's hang tracker persists a fatal-hang report once the main
+   * thread stays unresponsive past `hangDetectionThreshold`, uploaded on
+   * next launch. Requires bugsplat-apple v3.2.0+.
+   */
+  enableHangDetection?: boolean;
+  /**
+   * Seconds the main thread must be unresponsive before being declared hung
+   * (iOS only, default: 2.0). Choose a value above any legitimate main-thread
+   * work (image decoding, JSON parsing) to avoid false positives.
+   */
+  hangDetectionThreshold?: number;
   /** Custom key-value attributes to include with crash reports */
   attributes?: Record<string, string>;
   /** File paths for attachments (native only) */

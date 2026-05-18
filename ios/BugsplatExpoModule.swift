@@ -43,10 +43,21 @@ public class BugsplatExpoModule: Module {
       bs.applicationName = application
       bs.applicationVersion = version
       bs.autoSubmitCrashReport = true
+      // Default-on for the Expo wrapper. BugSplat-Apple ships hangDetection
+      // off by default (BOOL property, default NO) so opt-in is required. We
+      // flip it on so hang() and real production hangs produce reports
+      // without consumers having to remember an extra setup call.
+      bs.enableHangDetection = true
 
       if let opts = options {
         if let autoSubmit = opts["autoSubmitCrashReport"] as? Bool {
           bs.autoSubmitCrashReport = autoSubmit
+        }
+        if let enableHang = opts["enableHangDetection"] as? Bool {
+          bs.enableHangDetection = enableHang
+        }
+        if let threshold = opts["hangDetectionThreshold"] as? Double {
+          bs.hangDetectionThreshold = threshold
         }
         if let name = opts["userName"] as? String {
           bs.userName = name
