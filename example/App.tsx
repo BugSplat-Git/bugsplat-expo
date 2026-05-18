@@ -22,6 +22,7 @@ import {
   getActivity,
   recordActivity,
 } from './src/activity-log';
+import { useShake } from './src/use-shake';
 
 // Single source of truth: read directly from app.json. Metro bundles JSON
 // natively, and the values we need are static — so we skip expo-constants
@@ -209,6 +210,10 @@ export default function App() {
     setFeedbackBody('');
     setFeedbackOpen(true);
   }, []);
+
+  // Shake-to-feedback: matches the Android demo's ShakeDetector behavior.
+  // Disabled while the modal is open so the user can't re-trigger it mid-input.
+  useShake(onFeedback, { enabled: !feedbackOpen });
 
   const onSubmitFeedback = useCallback(async () => {
     if (sendingRef.current) return;
