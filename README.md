@@ -54,10 +54,12 @@ The plugin sets up required native permissions (Android) and optionally configur
 
 | Option | Required | Description |
 |--------|----------|-------------|
-| `database` | No | BugSplat database name (can also be set via `init()` or `BUGSPLAT_DATABASE` env var) |
-| `enableSymbolUpload` | No | Enable automatic symbol upload for iOS (dSYMs) and Android (.so files) |
-| `symbolUploadClientId` | No | BugSplat API client ID (or set `BUGSPLAT_CLIENT_ID` env var) |
-| `symbolUploadClientSecret` | No | BugSplat API client secret (or set `BUGSPLAT_CLIENT_SECRET` env var) |
+| `database` | **Yes** | BugSplat database name. Throws at `expo prebuild` if missing, empty, or set to a placeholder like `"<your-database>"`. Becomes the source of truth — also used by the runtime `init()` call when read from app code. |
+| `enableSymbolUpload` | No | Enable automatic symbol upload for iOS (dSYMs + JS source maps) and Android (.so files + Hermes JS source maps). |
+| `symbolUploadClientId` | When `enableSymbolUpload: true` | BugSplat API client ID (or set `BUGSPLAT_CLIENT_ID` env var) |
+| `symbolUploadClientSecret` | When `enableSymbolUpload: true` | BugSplat API client secret (or set `BUGSPLAT_CLIENT_SECRET` env var) |
+
+The plugin also validates `expo.name`, `expo.version`, and `expo.android.package` at prebuild — these flow into the symbol-upload scripts so the uploaded identity matches what your app reports at crash time.
 
 ### Symbol Upload
 
@@ -146,6 +148,19 @@ import { crash } from '@bugsplat/expo';
 crash();
 ```
 
+### Trigger a Native Hang (ANR)
+
+```typescript
+import { hang } from '@bugsplat/expo';
+
+// Freezes the UI thread in a native loop. On Android the system ANR detector
+// fires after ~5s of unresponsive input and BugSplat captures a dump with
+// symbolicated native frames. On iOS the main thread blocks indefinitely; with
+// the Apple SDK's hang tracker installed, a fatal-hang report is persisted and
+// uploaded on next launch — without it, force-quit captures the freeze.
+hang();
+```
+
 ### Error Boundary
 
 Wrap your component tree in `<ErrorBoundary>` to catch React render errors and report them to BugSplat automatically. Works identically on iOS, Android, and Web.
@@ -228,6 +243,40 @@ A few notes on this pattern:
 - `componentStack` is wrapped in a `Blob`. This works cross-platform because `@bugsplat/expo` includes `expo-blob`, which polyfills the web-standard `Blob` API on native.
 - `attributes` becomes a queryable column in the BugSplat dashboard — useful for filtering crashes by route, feature flag, build channel, etc.
 - If posting fails and you want retry, check the `success` property of the value returned by `post()` and reset `posted.current` accordingly. The recipe doesn't show this to keep it minimal.
+
+### Shake to Send Feedback
+
+A common pattern: let users shake the device to open a feedback dialog. `@bugsplat/expo` doesn't bundle a shake detector (to keep the package narrow), but wiring one up takes ~10 lines using [`react-native-shake`](https://github.com/clecoffre/react-native-shake), which works on real devices, the iOS Simulator (Device → Shake / Ctrl+⌘+Z), and the Android emulator (Extended Controls → Virtual sensors).
+
+```sh
+npx expo install react-native-shake
+```
+
+```tsx
+import { useEffect, useRef, useState } from 'react';
+import RNShake from 'react-native-shake';
+import { postFeedback } from '@bugsplat/expo';
+
+function useShake(onShake: () => void, enabled = true) {
+  const cb = useRef(onShake);
+  cb.current = onShake;
+  useEffect(() => {
+    if (!enabled) return;
+    const sub = RNShake.addListener(() => cb.current());
+    return () => sub.remove();
+  }, [enabled]);
+}
+
+function App() {
+  const [open, setOpen] = useState(false);
+  // Auto-disabled while the modal is open so the user's input shake
+  // can't bounce them right back into it.
+  useShake(() => setOpen(true), !open);
+  return /* ... feedback modal that calls postFeedback() on submit ... */;
+}
+```
+
+Tip: `react-native-shake` requires a development build — it's a native module, so Expo Go won't pick it up.
 
 ### User Feedback
 
@@ -317,6 +366,10 @@ Set a custom attribute. Note: not supported on web.
 
 Trigger a test crash to verify integration.
 
+### `hang()`
+
+Freeze the UI thread in a native loop. On Android this produces a real ANR with symbolicated native frames; on iOS the main thread blocks indefinitely (use force-quit to capture, or rely on the Apple SDK hang tracker if available). Requires a development build — no-op in Expo Go.
+
 ## Expo Go
 
 `@bugsplat/expo` works in Expo Go with reduced functionality. Since native modules are not available in Expo Go, native crash reporting is disabled. JS error reporting (`init()`, `post()`, `postFeedback()`, `setUser()`, `setAttribute()`, `ErrorBoundary`) still works via an HTTP fallback. A warning is logged at `init()` to let you know native crash reporting is inactive.
@@ -338,6 +391,17 @@ npx expo run:android --variant release
 **iOS**: Crash reports are captured at crash time by PLCrashReporter and **uploaded on the next app launch** when `init()` is called again. After triggering a test crash, relaunch the app and call `init()` to upload the pending report.
 
 **Android**: Crash reports are captured and **uploaded immediately at crash time** by the Crashpad handler process.
+
+### Testing Native Hangs (ANRs)
+
+`hang()` blocks the main thread in a native loop — on Android the system ANR detector fires after ~5 seconds of unresponsive input and BugSplat captures a dump with native frames. On iOS the freeze is indefinite; force-quit captures it (and the Apple SDK's hang tracker, when present, persists a fatal-hang report automatically).
+
+To trigger and verify:
+
+1. Call `hang()` (e.g. from a debug button).
+2. **Android**: tap the screen a few times — the system "App not responding" dialog appears, dump is captured.
+3. **iOS**: force-quit from the app switcher.
+4. Relaunch the app. The hang report uploads on next launch alongside any pending crash reports.
 
 ## Troubleshooting
 
