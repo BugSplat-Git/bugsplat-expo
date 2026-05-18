@@ -38,7 +38,11 @@ const withSourcemapBuildSetting: ConfigPlugin = (config) => {
   });
 };
 
-export const buildIosUploadScript = (props: BugSplatPluginOptions): string => {
+export const buildIosUploadScript = (
+  props: BugSplatPluginOptions,
+  appName: string,
+  appVersion: string
+): string => {
   const clientId = props.symbolUploadClientId || '${BUGSPLAT_CLIENT_ID}';
   const clientSecret = props.symbolUploadClientSecret || '${BUGSPLAT_CLIENT_SECRET}';
   // Validated by the top-level withBugsplat plugin.
@@ -59,8 +63,8 @@ export const buildIosUploadScript = (props: BugSplatPluginOptions): string => {
     '  # 1) Native dSYMs',
     `  npx --yes @bugsplat/symbol-upload \\\\`,
     `    -b "${database}" \\\\`,
-    `    -a "\${PRODUCT_NAME}" \\\\`,
-    `    -v "\${MARKETING_VERSION}" \\\\`,
+    `    -a "${appName}" \\\\`,
+    `    -v "${appVersion}" \\\\`,
     `    -i "$CLIENT_ID" \\\\`,
     `    -s "$CLIENT_SECRET" \\\\`,
     `    -d "\${DWARF_DSYM_FOLDER_PATH}" \\\\`,
@@ -71,8 +75,8 @@ export const buildIosUploadScript = (props: BugSplatPluginOptions): string => {
     '  if ls "${DERIVED_FILE_DIR}"/*.js.map "${DERIVED_FILE_DIR}"/*.jsbundle.map 1>/dev/null 2>&1; then',
     `    npx --yes @bugsplat/symbol-upload \\\\`,
     `      -b "${database}" \\\\`,
-    `      -a "\${PRODUCT_NAME}" \\\\`,
-    `      -v "\${MARKETING_VERSION}" \\\\`,
+    `      -a "${appName}" \\\\`,
+    `      -v "${appVersion}" \\\\`,
     `      -i "$CLIENT_ID" \\\\`,
     `      -s "$CLIENT_SECRET" \\\\`,
     `      -d "\${DERIVED_FILE_DIR}" \\\\`,
@@ -96,7 +100,10 @@ const withBugsplatSymbolUpload: ConfigPlugin<BugSplatPluginOptions> = (config, p
     );
 
     if (!alreadyExists) {
-      const shellScript = buildIosUploadScript(props);
+      // Use literal expo.name / expo.version so the upload identity matches
+      // what App.tsx passes into init(). PRODUCT_NAME / MARKETING_VERSION
+      // would diverge from expo.name when Xcode strips spaces / special chars.
+      const shellScript = buildIosUploadScript(props, config.name!, config.version!);
 
       project.addBuildPhase(
         [],
