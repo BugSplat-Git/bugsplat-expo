@@ -9,9 +9,10 @@ interface UseShakeOptions {
    */
   peakThreshold?: number;
   /**
-   * How many peaks must occur within `windowMs` to fire onShake. Default 3.
-   * A real shake has back-and-forth oscillation (3-5+ peaks); a single fast
-   * motion like lowering the phone only produces 1-2 peaks.
+   * How many peaks must occur within `windowMs` to fire onShake. Default 5.
+   * A real shake has sustained back-and-forth oscillation (6+ peaks at 5Hz);
+   * a single down-up motion produces 4 peaks (start-down, bottom-reverse,
+   * start-up, top-reverse) so requiring 5 rejects that pattern.
    */
   requiredPeaks?: number;
   /** Time window for collecting peaks. Default 600ms. */
@@ -43,7 +44,7 @@ interface UseShakeOptions {
 export function useShake(onShake: () => void, options: UseShakeOptions = {}): void {
   const {
     peakThreshold = 1.5,
-    requiredPeaks = 3,
+    requiredPeaks = 5,
     windowMs = 600,
     minPeakSpacingMs = 60,
     cooldownMs = 1500,
