@@ -1,6 +1,7 @@
 import { crash, hang, init, nativeAvailable, post, postFeedback } from '@bugsplat/expo';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   AppState,
   Image,
   Linking,
@@ -200,9 +201,29 @@ export default function App() {
   }, [refreshActivity]);
 
   const onHang = useCallback(async () => {
-    // Persist BEFORE triggering the hang so the entry survives ANR-kill / force-quit.
-    await recordActivity('hang', 'Main thread frozen');
-    hang();
+    const fire = async () => {
+      // Persist BEFORE triggering the hang so the entry survives ANR-kill / force-quit.
+      await recordActivity('hang', 'Main thread frozen');
+      hang();
+    };
+    // iOS hang flow needs user action — the BugSplat-Apple hang tracker
+    // persists the report once the threshold trips, but the actual upload only
+    // happens on next launch. Walk the user through force-quit + relaunch so
+    // they aren't left staring at a frozen UI wondering what happens next.
+    // Android's ANR detector handles all of this automatically via the system
+    // "App not responding" dialog, so no extra confirmation needed there.
+    if (Platform.OS === 'ios') {
+      Alert.alert(
+        'Freeze the main thread?',
+        'The UI will hang indefinitely. After 2+ seconds, BugSplat-Apple\'s tracker persists a fatal-hang report to disk. Force-quit from the app switcher to end the freeze, then relaunch — the report uploads on next launch.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Freeze', style: 'destructive', onPress: fire },
+        ]
+      );
+      return;
+    }
+    await fire();
   }, []);
 
   const onFeedback = useCallback(() => {
