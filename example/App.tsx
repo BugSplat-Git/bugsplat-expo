@@ -400,8 +400,11 @@ const styles = StyleSheet.create({
   // Flex container takes the available space; the image inside it stays at its
   // intrinsic aspect ratio and pins to the leading edge — fixes the phantom
   // centering caused by stretching the Image itself with resizeMode=contain.
+  // Explicit width (rather than aspectRatio) so RN Web doesn't stretch the
+  // Image to fill flex:1 and then center the content with resizeMode=contain.
+  // 78 = round(28 * 1000 / 359) — preserves the wordmark's intrinsic ratio.
   wordmarkWrap: { flex: 1, alignItems: 'flex-start' },
-  wordmark: { height: 28, aspectRatio: 1000 / 359 },
+  wordmark: { width: 78, height: 28 },
   topBarRight: { flexDirection: 'row', alignItems: 'center' },
   sdkVersion: {
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
