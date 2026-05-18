@@ -13,7 +13,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bugsplat.expo.example"
+      "bundleIdentifier": "com.bugsplat.expo.example",
+      "infoPlist": {
+        "NSMotionUsageDescription": "We use motion data to detect shake gestures for opening the feedback dialog."
+      }
     },
     "android": {
       "adaptiveIcon": {
