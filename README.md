@@ -246,23 +246,32 @@ A few notes on this pattern:
 
 ### Shake to Send Feedback
 
-A common pattern: let users shake the device to open a feedback dialog. `@bugsplat/expo` doesn't bundle a shake detector (to keep the package narrow), but wiring one up takes ~10 lines using [`react-native-shake`](https://github.com/clecoffre/react-native-shake), which works on real devices, the iOS Simulator (Device → Shake / Ctrl+⌘+Z), and the Android emulator (Extended Controls → Virtual sensors).
+A common pattern: let users shake the device to open a feedback dialog. `@bugsplat/expo` doesn't bundle a shake detector (to keep the package narrow), but wiring one up takes ~30 lines using [`expo-sensors`](https://docs.expo.dev/versions/latest/sdk/sensors/).
 
 ```sh
-npx expo install react-native-shake
+npx expo install expo-sensors
 ```
 
 ```tsx
 import { useEffect, useRef, useState } from 'react';
-import RNShake from 'react-native-shake';
+import { Accelerometer } from 'expo-sensors';
 import { postFeedback } from '@bugsplat/expo';
 
 function useShake(onShake: () => void, enabled = true) {
+  const lastFire = useRef(0);
   const cb = useRef(onShake);
   cb.current = onShake;
   useEffect(() => {
     if (!enabled) return;
-    const sub = RNShake.addListener(() => cb.current());
+    Accelerometer.setUpdateInterval(100);
+    const sub = Accelerometer.addListener(({ x, y, z }) => {
+      // values are in g-units; magnitude ≈ 1 at rest (gravity)
+      if (Math.abs(Math.sqrt(x * x + y * y + z * z) - 1) < 1.2) return;
+      const now = Date.now();
+      if (now - lastFire.current < 1500) return; // 1.5s cooldown
+      lastFire.current = now;
+      cb.current();
+    });
     return () => sub.remove();
   }, [enabled]);
 }
@@ -276,7 +285,7 @@ function App() {
 }
 ```
 
-Tip: `react-native-shake` requires a development build — it's a native module, so Expo Go won't pick it up.
+**Testing**: real iOS/Android devices work out of the box. The Android emulator can simulate shake via Extended Controls → Virtual sensors. The iOS Simulator's `Device → Shake` menu (Ctrl+⌘+Z) does **not** fire accelerometer data — it sends `UIEventSubtypeMotionShake`, a different channel. If iOS Simulator testability matters to you, swap `expo-sensors` for [`react-native-shake`](https://github.com/clecoffre/react-native-shake), which listens to both channels (tradeoff: it's a third-party native module and will crash the app on startup if you forget to run `npx expo prebuild --clean` after install).
 
 ### User Feedback
 
