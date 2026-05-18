@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
 
 interface UseShakeOptions {
@@ -57,7 +58,10 @@ export function useShake(onShake: () => void, options: UseShakeOptions = {}): vo
   onShakeRef.current = onShake;
 
   useEffect(() => {
-    if (!enabled) return;
+    // expo-sensors Accelerometer.addListener throws on web ('addListener is
+    // not a function' from the no-op web shim). There's no shake gesture on
+    // web anyway, so skip entirely rather than crashing the React tree.
+    if (!enabled || Platform.OS === 'web') return;
     Accelerometer.setUpdateInterval(intervalMs);
     const sub = Accelerometer.addListener(({ x, y, z }: { x: number; y: number; z: number }) => {
       const deviation = Math.abs(Math.sqrt(x * x + y * y + z * z) - 1);

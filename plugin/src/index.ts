@@ -24,6 +24,11 @@ const withBugsplat: ConfigPlugin<BugSplatPluginOptions | void> = (config, props)
       'Replace it with your real BugSplat database name in app.json under the plugin config.'
     );
   }
+  // Write the trimmed value back so the same normalized string flows into
+  // Info.plist (iOS), the Gradle task (Android), and any runtime read of
+  // the plugin config. Without this, "  my-db  " would pass validation but
+  // be embedded verbatim, targeting the wrong BugSplat database.
+  options.database = database;
 
   // Both platforms read the version from app code via expo.version.
   if (!config.version) {

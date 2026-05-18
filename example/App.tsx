@@ -119,7 +119,7 @@ const CARDS: Array<{
     key: 'hang',
     icon: require('./assets/splat_hang.png'),
     title: 'Hang',
-    subtitle: 'Freeze main thread for 8 seconds',
+    subtitle: 'Freeze main thread (native hang report)',
   },
 ];
 
