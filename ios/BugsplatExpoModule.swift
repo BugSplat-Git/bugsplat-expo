@@ -43,10 +43,21 @@ public class BugsplatExpoModule: Module {
       bs.applicationName = application
       bs.applicationVersion = version
       bs.autoSubmitCrashReport = true
+      // Default-on for the Expo wrapper. BugSplat-Apple ships hangDetection
+      // off by default (BOOL property, default NO) so opt-in is required. We
+      // flip it on so hang() and real production hangs produce reports
+      // without consumers having to remember an extra setup call.
+      bs.enableHangDetection = true
 
       if let opts = options {
         if let autoSubmit = opts["autoSubmitCrashReport"] as? Bool {
           bs.autoSubmitCrashReport = autoSubmit
+        }
+        if let enableHang = opts["enableHangDetection"] as? Bool {
+          bs.enableHangDetection = enableHang
+        }
+        if let threshold = opts["hangDetectionThreshold"] as? Double {
+          bs.hangDetectionThreshold = threshold
         }
         if let name = opts["userName"] as? String {
           bs.userName = name
@@ -92,8 +103,26 @@ public class BugsplatExpoModule: Module {
     }
 
     Function("crash") {
-      let array = NSArray()
-      _ = array.object(at: 99)
+      // Force-unwrap of nil — the pattern bugsplat-apple's own samples use.
+      // Produces a Swift runtime trap that PLCrashReporter catches and
+      // symbolicates cleanly. Preserved by the Release optimizer (force-unwrap
+      // is treated as observable). The earlier NSArray.object(at: 99) trick
+      // was being optimized out (discarded result + ObjC-bridged side effect
+      // the Swift optimizer doesn't model).
+      let prop: Int? = nil
+      _ = prop!
+    }
+
+    Function("hang") {
+      // Dispatch to the main thread so the function returns immediately and the
+      // JS thread stays responsive while the UI freezes. Thread.sleep(until:
+      // .distantFuture) blocks main indefinitely — matches the macOS sample's
+      // simulateHang. When the Apple SDK's hang tracker is enabled, a fatal-hang
+      // report is persisted; otherwise the user can force-quit to test crash
+      // reporting on the next launch.
+      DispatchQueue.main.async {
+        Thread.sleep(until: .distantFuture)
+      }
     }
   }
 }

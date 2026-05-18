@@ -132,3 +132,14 @@ export function removeAttribute(key: string): void {
 export function crash(): void {
   throw new Error('BugSplat test crash');
 }
+
+/**
+ * Native hang detection is not available on web. No-op with a warning so
+ * code paths that call `hang()` cross-platform don't break web bundles.
+ */
+export function hang(): void {
+  console.warn('[@bugsplat/expo] hang() is not supported on web.');
+}
+
+// nativeAvailable is false on web — no native module to bridge to.
+export const nativeAvailable = false;

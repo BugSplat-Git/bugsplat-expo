@@ -1,0 +1,61 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export type ActivityType = 'crash' | 'error' | 'feedback' | 'hang';
+const ACTIVITY_TYPES: ReadonlySet<ActivityType> = new Set(['crash', 'error', 'feedback', 'hang']);
+
+export interface ActivityEntry {
+  type: ActivityType;
+  detail: string;
+  timestampMs: number;
+}
+
+const STORAGE_KEY = 'bugsplat_example_activity';
+// Keeps the recent activity card from overflowing the screen below the four
+// event cards. Smaller than bugsplat-android's cap of 3 because Expo's layout
+// uses slightly more vertical space (safe-area + card min-height overhead).
+const MAX_ENTRIES = 2;
+
+export async function recordActivity(type: ActivityType, detail: string): Promise<void> {
+  const entries = await getActivity();
+  entries.unshift({ type, detail, timestampMs: Date.now() });
+  const trimmed = entries.slice(0, MAX_ENTRIES);
+  // Awaited write — for crash entries, the caller must `await` this before
+  // triggering the native crash so the entry survives process death.
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+}
+
+export async function getActivity(): Promise<ActivityEntry[]> {
+  // Wrap the whole read: AsyncStorage.getItem can reject if storage is
+  // unavailable (corrupt DB, perms, etc.). Callers (initial load, AppState
+  // refresh) treat the activity list as best-effort, so fall back to empty
+  // rather than letting an unhandled rejection bubble up.
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Validate `type` against the known activity types so a corrupted or
+    // older persisted row can't sneak through as an unknown discriminator
+    // (which would crash activityDotColor / activityLabel's exhaustive switch).
+    return parsed.filter((e): e is ActivityEntry =>
+      e &&
+      typeof e.type === 'string' &&
+      ACTIVITY_TYPES.has(e.type as ActivityType) &&
+      typeof e.detail === 'string' &&
+      typeof e.timestampMs === 'number'
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function formatRelativeTime(nowMs: number, thenMs: number): string {
+  const deltaMs = Math.max(0, nowMs - thenMs);
+  const minutes = Math.floor(deltaMs / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}

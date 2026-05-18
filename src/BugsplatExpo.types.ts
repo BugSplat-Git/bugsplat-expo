@@ -17,6 +17,19 @@ export interface BugSplatInitOptions {
   userEmail?: string;
   /** Whether to auto-submit crash reports without user prompt (iOS only, default: true) */
   autoSubmitCrashReport?: boolean;
+  /**
+   * Enable native hang detection on iOS (default: true). When enabled,
+   * BugSplat-Apple's hang tracker persists a fatal-hang report once the main
+   * thread stays unresponsive past `hangDetectionThreshold`, uploaded on
+   * next launch. Requires bugsplat-apple v3.2.0+.
+   */
+  enableHangDetection?: boolean;
+  /**
+   * Seconds the main thread must be unresponsive before being declared hung
+   * (iOS only, default: 2.0). Choose a value above any legitimate main-thread
+   * work (image decoding, JSON parsing) to avoid false positives.
+   */
+  hangDetectionThreshold?: number;
   /** Custom key-value attributes to include with crash reports */
   attributes?: Record<string, string>;
   /** File paths for attachments (native only) */
@@ -62,6 +75,10 @@ export interface BugSplatPluginOptions {
   symbolUploadClientId?: string;
   /** BugSplat API client secret for symbol upload (or set BUGSPLAT_CLIENT_SECRET env var) */
   symbolUploadClientSecret?: string;
-  /** BugSplat database name (optional — prefer setting via init() in code) */
-  database?: string;
+  /**
+   * BugSplat database name. Required — the plugin throws at prebuild if missing,
+   * blank, or set to an angle-bracket placeholder. Acts as the single source of
+   * truth for both symbol upload and the runtime `init()` call.
+   */
+  database: string;
 }

@@ -9,14 +9,18 @@
     "splash": {
       "image": "./assets/bug.png",
       "resizeMode": "contain",
-      "backgroundColor": "#f0f0f0"
+      "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bugsplat.expo.example"
+      "bundleIdentifier": "com.bugsplat.expo.example",
+      "infoPlist": {
+        "NSMotionUsageDescription": "We use motion data to detect shake gestures for opening the feedback dialog."
+      }
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/bug.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.bugsplat.expo.example"
@@ -26,7 +30,7 @@
     },
     "plugins": [
       ["@bugsplat/expo", {
-        "database": "your-database",
+        "database": "<your-database>",
         "enableSymbolUpload": true
       }],
       ["expo-build-properties", {
