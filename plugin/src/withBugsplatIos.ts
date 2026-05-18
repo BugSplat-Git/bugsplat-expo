@@ -23,7 +23,8 @@ export const withBugsplatIos: ConfigPlugin<BugSplatPluginOptions> = (config, pro
 export const buildIosUploadScript = (props: BugSplatPluginOptions): string => {
   const clientId = props.symbolUploadClientId || '${BUGSPLAT_CLIENT_ID}';
   const clientSecret = props.symbolUploadClientSecret || '${BUGSPLAT_CLIENT_SECRET}';
-  const database = props.database || '${BUGSPLAT_DATABASE}';
+  // Validated by the top-level withBugsplat plugin.
+  const database = props.database!;
 
   return [
     'if [ "${CONFIGURATION}" = "Release" ]; then',

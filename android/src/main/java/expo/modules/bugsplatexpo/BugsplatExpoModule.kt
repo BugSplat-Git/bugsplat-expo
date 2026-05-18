@@ -98,5 +98,15 @@ class BugsplatExpoModule : Module() {
     Function("crash") {
       BugSplatBridge.crash()
     }
+
+    Function("hang") {
+      // Dispatch to the UI thread so the function returns immediately and the
+      // JS thread stays responsive while the main thread spins in a native loop.
+      // BugSplatBridge.hang() never returns — Android's ANR detector fires after
+      // ~5s of unresponsive input, producing a dump with symbolicated native frames.
+      currentActivity.runOnUiThread {
+        BugSplatBridge.hang()
+      }
+    }
   }
 }

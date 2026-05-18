@@ -95,5 +95,17 @@ public class BugsplatExpoModule: Module {
       let array = NSArray()
       _ = array.object(at: 99)
     }
+
+    Function("hang") {
+      // Dispatch to the main thread so the function returns immediately and the
+      // JS thread stays responsive while the UI freezes. Thread.sleep(until:
+      // .distantFuture) blocks main indefinitely — matches the macOS sample's
+      // simulateHang. When the Apple SDK's hang tracker is enabled, a fatal-hang
+      // report is persisted; otherwise the user can force-quit to test crash
+      // reporting on the next launch.
+      DispatchQueue.main.async {
+        Thread.sleep(until: .distantFuture)
+      }
+    }
   }
 }

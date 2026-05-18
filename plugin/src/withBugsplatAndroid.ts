@@ -33,9 +33,8 @@ export const buildAndroidGradleTask = (props: BugSplatPluginOptions): string => 
   const clientSecret = props.symbolUploadClientSecret
     ? `"${props.symbolUploadClientSecret}"`
     : 'System.getenv("BUGSPLAT_CLIENT_SECRET") ?: ""';
-  const database = props.database
-    ? `"${props.database}"`
-    : 'System.getenv("BUGSPLAT_DATABASE") ?: ""';
+  // Validated by the top-level withBugsplat plugin.
+  const database = props.database!;
 
   return [
     '',
@@ -49,7 +48,7 @@ export const buildAndroidGradleTask = (props: BugSplatPluginOptions): string => 
     '            return',
     '        }',
     '',
-    `        def bsDatabase = ${database}`,
+    `        def bsDatabase = "${database}"`,
     `        def bsClientId = ${clientId}`,
     `        def bsClientSecret = ${clientSecret}`,
     '        if (!bsClientId || !bsClientSecret) {',

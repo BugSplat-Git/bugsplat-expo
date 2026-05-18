@@ -173,3 +173,19 @@ export function crash(): void {
   }
   console.warn('[@bugsplat/expo] crash() requires native modules. Use a development build to test native crashes.');
 }
+
+/**
+ * Freeze the main UI thread in a native loop. On Android this produces a real
+ * ANR with symbolicated native frames (~5s of unresponsive input fires the
+ * detector). On iOS the main thread blocks indefinitely — when the Apple SDK's
+ * hang tracker is enabled, a fatal-hang report is persisted; otherwise the user
+ * can force-quit to capture the hang. Requires a development build — no-op in
+ * Expo Go.
+ */
+export function hang(): void {
+  if (nativeAvailable) {
+    BugsplatExpoModule!.hang();
+    return;
+  }
+  console.warn('[@bugsplat/expo] hang() requires native modules. Use a development build to test native hangs.');
+}

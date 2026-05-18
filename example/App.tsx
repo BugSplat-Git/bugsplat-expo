@@ -1,240 +1,452 @@
-import { useState } from 'react';
-import { init, post, setUser, setAttribute, removeAttribute, crash, nativeAvailable, ErrorBoundary } from '@bugsplat/expo';
-import { Button, Image, ScrollView, Text, View, StyleSheet, TextInput } from 'react-native';
-import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
+import { crash, hang, init, post, postFeedback } from '@bugsplat/expo';
+import Constants from 'expo-constants';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  AppState,
+  Image,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import {
+  ActivityEntry,
+  ActivityType,
+  formatRelativeTime,
+  getActivity,
+  recordActivity,
+} from './src/activity-log';
 
-const DATABASE = 'your-database';
-const APP_NAME = 'bugsplat-expo-example';
-const APP_VERSION = '1.0.0';
+// Single source of truth: pull the database from the @bugsplat/expo plugin
+// config in app.json. The plugin throws at prebuild if it's missing, so by
+// the time this code runs the value is guaranteed present — but we narrow
+// the type with an explicit check so the demo shows the resolution path.
+const bugsplatPlugin = (Constants.expoConfig?.plugins ?? []).find(
+  (entry): entry is [string, { database?: string }] =>
+    Array.isArray(entry) && entry[0] === '@bugsplat/expo'
+);
+const rawDatabase = bugsplatPlugin?.[1]?.database;
+if (!rawDatabase) {
+  throw new Error('@bugsplat/expo: database missing from app.json plugin config');
+}
+const DATABASE: string = rawDatabase;
 
-function BuggyComponent() {
-  throw new Error('Test render error caught by ErrorBoundary');
+// Mirror the values the symbol-upload scripts use, so JS init() reconciles
+// with uploaded symbols under one app identity per platform:
+//   - iOS  → PRODUCT_NAME      (= expo.name)
+//   - Android → applicationId  (= expo.android.package)
+// Version is shared: expo.version → MARKETING_VERSION (iOS) / versionName (Android).
+const rawAppName = Platform.select({
+  ios: Constants.expoConfig?.name,
+  android: Constants.expoConfig?.android?.package,
+  default: Constants.expoConfig?.name,
+});
+const rawAppVersion = Constants.expoConfig?.version;
+if (!rawAppName || !rawAppVersion) {
+  throw new Error(
+    '@bugsplat/expo: app.json must define expo.version, expo.name (iOS), and expo.android.package (Android)'
+  );
+}
+const APP_NAME: string = rawAppName;
+const APP_VERSION: string = rawAppVersion;
+const SDK_VERSION = '0.6.0';
+
+const COLORS = {
+  screenBg: '#FAF8F2',
+  cardBg: '#FFFFFF',
+  cardStroke: '#ECEAE2',
+  textPrimary: '#0E1116',
+  textSecondary: '#6B7280',
+  textTertiary: '#9CA3AF',
+  link: '#1F73E8',
+  badgeBg: '#F1EFE8',
+  connectedBg: '#FFFFFF',
+  connectedStroke: '#E4E2DA',
+  connectedDot: '#22C55E',
+  activityCrash: '#1F73E8',
+  activityError: '#E5B142',
+  activityFeedback: '#22C55E',
+  activityHang: '#E5B142',
+};
+
+const CARDS: Array<{
+  key: ActivityType;
+  icon: ReturnType<typeof require>;
+  title: string;
+  subtitle: string;
+}> = [
+  {
+    key: 'crash',
+    icon: require('./assets/splat_crash.png'),
+    title: 'Crash',
+    subtitle: 'Native crash · stack + threads + memory',
+  },
+  {
+    key: 'error',
+    icon: require('./assets/splat_error.png'),
+    title: 'Non-Crash Error',
+    subtitle: 'Exception caught · app keeps running',
+  },
+  {
+    key: 'feedback',
+    icon: require('./assets/splat_feedback.png'),
+    title: 'User Feedback',
+    subtitle: 'Open the feedback sheet',
+  },
+  {
+    key: 'hang',
+    icon: require('./assets/splat_hang.png'),
+    title: 'Hang',
+    subtitle: 'Freeze main thread for 8 seconds',
+  },
+];
+
+function activityDotColor(type: ActivityType): string {
+  switch (type) {
+    case 'crash': return COLORS.activityCrash;
+    case 'error': return COLORS.activityError;
+    case 'feedback': return COLORS.activityFeedback;
+    case 'hang': return COLORS.activityHang;
+  }
+}
+
+function activityLabel(type: ActivityType): string {
+  switch (type) {
+    case 'crash': return 'Crash';
+    case 'error': return 'Error';
+    case 'feedback': return 'Feedback';
+    case 'hang': return 'Hang';
+  }
 }
 
 export default function App() {
-  const [status, setStatus] = useState('Not initialized');
-  const [database, setDatabase] = useState(DATABASE);
-  const [attrKey, setAttrKey] = useState('environment');
-  const [attrValue, setAttrValue] = useState('development');
-  const [activeAttributes, setActiveAttributes] = useState<Record<string, string>>({});
-  const [triggerRenderError, setTriggerRenderError] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [entries, setEntries] = useState<ActivityEntry[]>([]);
+  const [statusText, setStatusText] = useState('Shake the device to send feedback anytime.');
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackTitle, setFeedbackTitle] = useState('');
+  const [feedbackBody, setFeedbackBody] = useState('');
+  const [nowTick, setNowTick] = useState(Date.now());
+  const sendingRef = useRef(false);
 
-  const handleInit = async () => {
-    try {
-      await init(database, APP_NAME, APP_VERSION, {
-        userName: 'Test User',
-        userEmail: 'test@example.com',
-      });
-      setStatus('Initialized!');
-    } catch (e) {
-      setStatus(`Init failed: ${e}`);
-    }
-  };
+  const refreshActivity = useCallback(async () => {
+    const list = await getActivity();
+    setEntries(list);
+    setNowTick(Date.now());
+  }, []);
 
-  const handlePost = async () => {
-    try {
-      const result = await post(new Error('Test error from bugsplat-expo example'));
-      setStatus(result.success ? 'Error posted!' : `Post failed: ${result.error}`);
-    } catch (e) {
-      setStatus(`Post failed: ${e}`);
-    }
-  };
+  useEffect(() => {
+    (async () => {
+      try {
+        await init(DATABASE, APP_NAME, APP_VERSION);
+        setConnected(true);
+      } catch {
+        setConnected(false);
+      }
+      await refreshActivity();
+    })();
+  }, [refreshActivity]);
 
-  const handleSetUser = () => {
-    setUser('Example User', 'user@example.com');
-    setStatus('User set!');
-  };
-
-  const handleSetAttribute = () => {
-    if (!attrKey.trim()) {
-      setStatus('Attribute key cannot be empty');
-      return;
-    }
-    setAttribute(attrKey, attrValue);
-    setActiveAttributes((prev) => ({ ...prev, [attrKey]: attrValue }));
-    setStatus(`Attribute set: ${attrKey} = ${attrValue}`);
-  };
-
-  const handleRemoveAttribute = (key: string) => {
-    removeAttribute(key);
-    setActiveAttributes((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshActivity();
     });
-    setStatus(`Attribute removed: ${key}`);
-  };
+    return () => sub.remove();
+  }, [refreshActivity]);
 
-  const handleCrash = () => {
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const onCrash = useCallback(async () => {
+    // Persist BEFORE triggering the native crash so the entry survives process death.
+    await recordActivity('crash', 'Native crash triggered');
     crash();
+  }, []);
+
+  const onError = useCallback(async () => {
+    try {
+      const x: unknown = null;
+      (x as { length: number }).length;
+    } catch (e) {
+      const name = e instanceof Error ? e.constructor.name : 'Error';
+      await recordActivity('error', `${name} caught`);
+      await refreshActivity();
+      setStatusText(`Caught: ${name} — app still running`);
+      if (e instanceof Error) post(e).catch(() => {});
+    }
+  }, [refreshActivity]);
+
+  const onHang = useCallback(async () => {
+    // Persist BEFORE triggering the hang so the entry survives ANR-kill / force-quit.
+    await recordActivity('hang', 'Main thread frozen');
+    hang();
+  }, []);
+
+  const onFeedback = useCallback(() => {
+    setFeedbackTitle('');
+    setFeedbackBody('');
+    setFeedbackOpen(true);
+  }, []);
+
+  const onSubmitFeedback = useCallback(async () => {
+    if (sendingRef.current) return;
+    const title = feedbackTitle.trim();
+    if (!title) return;
+    sendingRef.current = true;
+    setStatusText('Sending feedback...');
+    setFeedbackOpen(false);
+    try {
+      const result = await postFeedback(title, { description: feedbackBody.trim() || undefined });
+      if (result.success) {
+        setStatusText('Feedback sent — thank you!');
+        await recordActivity('feedback', `“${title}”`);
+        await refreshActivity();
+      } else {
+        setStatusText('Failed to send feedback');
+      }
+    } catch {
+      setStatusText('Failed to send feedback');
+    } finally {
+      sendingRef.current = false;
+    }
+  }, [feedbackTitle, feedbackBody, refreshActivity]);
+
+  const onViewDashboard = useCallback(() => {
+    const url = `https://app.bugsplat.com/v2/dashboard?database=${encodeURIComponent(DATABASE)}`;
+    Linking.openURL(url).catch(() => {});
+  }, []);
+
+  const handlers: Record<ActivityType, () => void | Promise<void>> = {
+    crash: onCrash,
+    error: onError,
+    feedback: onFeedback,
+    hang: onHang,
   };
 
   return (
     <SafeAreaProvider>
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.container}>
-        <Image source={require('./assets/bug.png')} style={styles.logo} />
-        <Text style={styles.header}>BugSplat Expo Example</Text>
-
-        <View style={styles.group}>
-          <Text style={styles.groupHeader}>Status</Text>
-          <Text>{status}</Text>
-        </View>
-
-        <View style={styles.group}>
-          <Text style={styles.groupHeader}>Database</Text>
-          <TextInput
-            style={styles.input}
-            value={database}
-            onChangeText={setDatabase}
-            placeholder="Enter BugSplat database name"
-          />
-        </View>
-
-        <View style={styles.group}>
-          <Text style={styles.groupHeader}>Actions</Text>
-          <View style={styles.buttonRow}>
-            <Button title="Init" onPress={handleInit} />
-          </View>
-          <View style={styles.buttonRow}>
-            <Button title="Post Error" onPress={handlePost} />
-          </View>
-          <View style={styles.buttonRow}>
-            <Button title="Set User" onPress={handleSetUser} />
-          </View>
-          <View style={styles.buttonRow}>
-            <Button title="Set Attribute" onPress={handleSetAttribute} />
-          </View>
-        </View>
-
-        <View style={styles.group}>
-          <Text style={styles.groupHeader}>Attributes</Text>
-          <TextInput
-            style={styles.input}
-            value={attrKey}
-            onChangeText={setAttrKey}
-            placeholder="Attribute key"
-          />
-          <TextInput
-            style={[styles.input, { marginTop: 8 }]}
-            value={attrValue}
-            onChangeText={setAttrValue}
-            placeholder="Attribute value"
-          />
-          {Object.entries(activeAttributes).map(([key, value]) => (
-            <View key={key} style={styles.attributeRow}>
-              <Text style={styles.attributeText}>{key}: {value}</Text>
-              <Button title="Remove" onPress={() => handleRemoveAttribute(key)} color="red" />
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.group}>
-          <Text style={styles.groupHeader}>Native Crash</Text>
-          <View style={styles.buttonRow}>
-            <Button
-              title="Test Crash"
-              onPress={handleCrash}
-              color={nativeAvailable && !__DEV__ ? 'red' : 'gray'}
-              disabled={!nativeAvailable || __DEV__}
-            />
-            {(!nativeAvailable || __DEV__) && (
-              <Text style={styles.disabledHint}>
-                Native crash testing requires a release build
-              </Text>
-            )}
-          </View>
-        </View>
-
-        <View style={styles.group}>
-          <Text style={styles.groupHeader}>Error Boundary</Text>
-          <ErrorBoundary
-            fallback={({ error, resetErrorBoundary }) => (
-              <View>
-                <Text style={styles.errorText}>Caught: {error.message}</Text>
-                <Button title="Reset" onPress={() => {
-                  setTriggerRenderError(false);
-                  resetErrorBoundary();
-                }} />
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.topBar}>
+            <Image source={require('./assets/bugsplat_wordmark.png')} style={styles.wordmark} resizeMode="contain" />
+            <View style={styles.topBarRight}>
+              <Text style={styles.sdkVersion}>{`v${SDK_VERSION}`}</Text>
+              <View style={styles.connectedPill}>
+                <View style={[styles.connectedDot, { backgroundColor: connected ? COLORS.connectedDot : COLORS.textTertiary }]} />
+                <Text style={styles.connectedText}>{connected ? 'Connected' : 'Offline'}</Text>
               </View>
-            )}
-          >
-            {triggerRenderError && <BuggyComponent />}
-          </ErrorBoundary>
-          <View style={styles.buttonRow}>
-            <Button
-              title="Trigger Render Error"
-              onPress={() => setTriggerRenderError(true)}
-              color="orange"
-            />
+            </View>
           </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>BugSplat SDK · Demo</Text>
+            <View style={styles.dbBadge}>
+              <Text style={styles.dbBadgeText}>{DATABASE}</Text>
+            </View>
+          </View>
+          <Text style={styles.subtitle}>Trigger an event. We catch it, group it, route it to your dashboard.</Text>
+
+          <Text style={[styles.sectionHeader, { marginTop: 22 }]}>TRIGGER AN EVENT</Text>
+
+          {CARDS.map((card) => (
+            <Pressable
+              key={card.key}
+              onPress={handlers[card.key]}
+              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            >
+              <Image source={card.icon} style={styles.cardIcon} resizeMode="contain" />
+              <View style={styles.cardText}>
+                <Text style={styles.cardTitle}>{card.title}</Text>
+                <Text style={styles.cardSubtitle}>{card.subtitle}</Text>
+              </View>
+            </Pressable>
+          ))}
+
+          <View style={styles.recentCard}>
+            <View style={styles.recentHeader}>
+              <Text style={styles.sectionHeader}>RECENT ACTIVITY</Text>
+              <Pressable onPress={onViewDashboard} hitSlop={8}>
+                <Text style={styles.dashboardLink}>View dashboard ↗</Text>
+              </Pressable>
+            </View>
+
+            {entries.length === 0 ? (
+              <Text style={styles.emptyText}>No events yet — tap a card above to get started.</Text>
+            ) : (
+              entries.map((entry, idx) => (
+                <View key={`${entry.timestampMs}-${idx}`} style={[styles.activityRow, idx > 0 && styles.activityRowSpacing]}>
+                  <View style={[styles.activityDot, { backgroundColor: activityDotColor(entry.type) }]} />
+                  <Text style={styles.activityLabel}>{activityLabel(entry.type)}</Text>
+                  <Text style={styles.activityDetail} numberOfLines={1}>{entry.detail}</Text>
+                  <Text style={styles.activityTime}>{formatRelativeTime(nowTick, entry.timestampMs)}</Text>
+                </View>
+              ))
+            )}
+          </View>
+
+          <Text style={styles.footer}>{statusText}</Text>
+        </ScrollView>
+
+        <Modal visible={feedbackOpen} animationType="slide" transparent onRequestClose={() => setFeedbackOpen(false)}>
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Send Feedback</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Subject"
+                placeholderTextColor={COLORS.textTertiary}
+                value={feedbackTitle}
+                onChangeText={setFeedbackTitle}
+                autoFocus
+              />
+              <TextInput
+                style={[styles.modalInput, styles.modalInputMultiline]}
+                placeholder="Description (optional)"
+                placeholderTextColor={COLORS.textTertiary}
+                value={feedbackBody}
+                onChangeText={setFeedbackBody}
+                multiline
+              />
+              <View style={styles.modalButtons}>
+                <Pressable onPress={() => setFeedbackOpen(false)} style={({ pressed }) => [styles.modalButton, pressed && { opacity: 0.6 }]}>
+                  <Text style={styles.modalButtonSecondary}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  onPress={onSubmitFeedback}
+                  disabled={!feedbackTitle.trim()}
+                  style={({ pressed }) => [styles.modalButton, pressed && { opacity: 0.6 }]}
+                >
+                  <Text style={[styles.modalButtonPrimary, !feedbackTitle.trim() && { opacity: 0.4 }]}>Submit</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  logo: {
-    width: 120,
-    height: 120,
-    alignSelf: 'center',
-    marginTop: 20,
-  },
-  header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    margin: 20,
-    textAlign: 'center',
-  },
-  groupHeader: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  group: {
-    margin: 16,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 16,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f0f0',
-  },
-  buttonRow: {
-    marginVertical: 4,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 16,
-  },
-  attributeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-    paddingVertical: 4,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  attributeText: {
-    fontSize: 14,
-    flex: 1,
-  },
-  disabledHint: {
-    color: '#999',
+  safe: { flex: 1, backgroundColor: COLORS.screenBg },
+  scroll: { flex: 1, backgroundColor: COLORS.screenBg },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
+
+  topBar: { flexDirection: 'row', alignItems: 'center' },
+  wordmark: { flex: 1, height: 28, alignSelf: 'flex-start' },
+  topBarRight: { flexDirection: 'row', alignItems: 'center' },
+  sdkVersion: {
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
     fontSize: 12,
-    marginTop: 4,
-    textAlign: 'center',
+    color: COLORS.textSecondary,
+    marginRight: 10,
   },
-  errorText: {
-    color: 'red',
-    fontSize: 16,
-    marginBottom: 8,
+  connectedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.connectedBg,
+    borderWidth: 1,
+    borderColor: COLORS.connectedStroke,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
+  connectedDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  connectedText: { fontSize: 12, color: COLORS.textPrimary },
+
+  titleRow: { flexDirection: 'row', alignItems: 'center', marginTop: 22 },
+  title: { fontSize: 28, fontWeight: '700', color: COLORS.textPrimary },
+  dbBadge: {
+    marginLeft: 10,
+    backgroundColor: COLORS.badgeBg,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  dbBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    letterSpacing: 0.4,
+  },
+  subtitle: {
+    marginTop: 6,
+    fontSize: 15,
+    lineHeight: 21,
+    color: COLORS.textSecondary,
+  },
+
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textTertiary,
+    letterSpacing: 1.5,
+  },
+
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.cardBg,
+    borderWidth: 1,
+    borderColor: COLORS.cardStroke,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    minHeight: 84,
+    marginTop: 12,
+  },
+  cardPressed: { opacity: 0.7 },
+  cardIcon: { width: 52, height: 52, marginRight: 16 },
+  cardText: { flex: 1 },
+  cardTitle: { fontSize: 17, fontWeight: '700', color: COLORS.textPrimary },
+  cardSubtitle: { marginTop: 2, fontSize: 14, color: COLORS.textSecondary },
+
+  recentCard: {
+    marginTop: 18,
+    backgroundColor: COLORS.cardBg,
+    borderWidth: 1,
+    borderColor: COLORS.cardStroke,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  recentHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dashboardLink: { fontSize: 13, fontWeight: '700', color: COLORS.link },
+  emptyText: { marginTop: 14, fontSize: 14, color: COLORS.textTertiary },
+
+  activityRow: { flexDirection: 'row', alignItems: 'center', marginTop: 14 },
+  activityRowSpacing: { marginTop: 10 },
+  activityDot: { width: 8, height: 8, borderRadius: 4, marginRight: 12 },
+  activityLabel: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary, marginRight: 14 },
+  activityDetail: { flex: 1, fontSize: 14, color: COLORS.textSecondary },
+  activityTime: { fontSize: 13, color: COLORS.textTertiary, marginLeft: 10 },
+
+  footer: { marginTop: 18, textAlign: 'center', fontSize: 13, color: COLORS.textTertiary },
+
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', paddingHorizontal: 24 },
+  modalCard: { backgroundColor: '#fff', borderRadius: 14, padding: 20 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 12 },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: COLORS.cardStroke,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: COLORS.textPrimary,
+    marginTop: 8,
+  },
+  modalInputMultiline: { minHeight: 90, textAlignVertical: 'top' },
+  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 14 },
+  modalButton: { paddingHorizontal: 14, paddingVertical: 8, marginLeft: 8 },
+  modalButtonSecondary: { fontSize: 15, color: COLORS.textSecondary, fontWeight: '600' },
+  modalButtonPrimary: { fontSize: 15, color: COLORS.link, fontWeight: '700' },
 });
