@@ -3,12 +3,24 @@ import { Accelerometer } from 'expo-sensors';
 
 interface UseShakeOptions {
   /**
-   * g-force deviation from rest (1g) needed to count as a shake. Default 2.5
-   * (≈ 3.5g peak), tuned to require a deliberate shake while filtering out
-   * common false positives like setting the phone down on a hard surface
-   * (~2g impact spike) or quick pocket motion.
+   * g-force deviation from rest (1g) needed to register a single peak.
+   * Default 1.5 — moderate because the multi-peak window does the bulk of
+   * the false-positive filtering. Raise to demand harder shakes.
    */
-  threshold?: number;
+  peakThreshold?: number;
+  /**
+   * How many peaks must occur within `windowMs` to fire onShake. Default 3.
+   * A real shake has back-and-forth oscillation (3-5+ peaks); a single fast
+   * motion like lowering the phone only produces 1-2 peaks.
+   */
+  requiredPeaks?: number;
+  /** Time window for collecting peaks. Default 600ms. */
+  windowMs?: number;
+  /**
+   * Minimum spacing between counted peaks. Default 60ms — at 10Hz polling,
+   * a single peak can span 2 samples, so dedup tightly-spaced readings.
+   */
+  minPeakSpacingMs?: number;
   /** Milliseconds to ignore further shakes after firing. Default 1500. */
   cooldownMs?: number;
   /** Polling interval for the accelerometer. Default 100ms. */
@@ -18,17 +30,27 @@ interface UseShakeOptions {
 }
 
 /**
- * Fires `onShake` when the device experiences a high-g event. Uses
- * expo-sensors Accelerometer with a magnitude-over-threshold heuristic +
- * cooldown so a single shake doesn't fire multiple times.
+ * Fires `onShake` when the device experiences a *pattern* of high-g events —
+ * specifically, `requiredPeaks` (default 3) peaks above `peakThreshold` within
+ * a sliding `windowMs` window. The multi-peak requirement is what
+ * distinguishes a deliberate shake (rapid back-and-forth oscillation) from
+ * incidental single impacts (lowering the phone, setting it down, pocket bump).
  *
- * Note: the iOS Simulator's Device → Shake menu fires UIEventSubtypeMotionShake,
- * not real accelerometer data, so this hook won't trigger there. Test iOS shake
- * on a real device, or shake the virtual device in the Android emulator's
- * Extended Controls → Virtual sensors panel.
+ * iOS Simulator's Device → Shake menu sends UIEventSubtypeMotionShake, not
+ * accelerometer data, so this hook only works on real iOS devices. Use the
+ * Android emulator's Virtual sensors panel for emulator testing.
  */
 export function useShake(onShake: () => void, options: UseShakeOptions = {}): void {
-  const { threshold = 2.5, cooldownMs = 1500, intervalMs = 100, enabled = true } = options;
+  const {
+    peakThreshold = 1.5,
+    requiredPeaks = 3,
+    windowMs = 600,
+    minPeakSpacingMs = 60,
+    cooldownMs = 1500,
+    intervalMs = 100,
+    enabled = true,
+  } = options;
+  const peaksRef = useRef<number[]>([]);
   const lastFireRef = useRef(0);
   const onShakeRef = useRef(onShake);
   onShakeRef.current = onShake;
@@ -37,15 +59,21 @@ export function useShake(onShake: () => void, options: UseShakeOptions = {}): vo
     if (!enabled) return;
     Accelerometer.setUpdateInterval(intervalMs);
     const sub = Accelerometer.addListener(({ x, y, z }: { x: number; y: number; z: number }) => {
-      // Accelerometer values are in g-units; magnitude ≈ 1 at rest (gravity).
-      // |magnitude - 1| isolates the shake component from gravity.
-      const magnitude = Math.sqrt(x * x + y * y + z * z);
-      if (Math.abs(magnitude - 1) < threshold) return;
+      const deviation = Math.abs(Math.sqrt(x * x + y * y + z * z) - 1);
+      if (deviation < peakThreshold) return;
       const now = Date.now();
+      // Dedup tightly-spaced samples that belong to the same physical peak.
+      const last = peaksRef.current[peaksRef.current.length - 1];
+      if (last && now - last < minPeakSpacingMs) return;
+      // Drop expired peaks, then record this one.
+      peaksRef.current = peaksRef.current.filter((t) => now - t < windowMs);
+      peaksRef.current.push(now);
+      if (peaksRef.current.length < requiredPeaks) return;
       if (now - lastFireRef.current < cooldownMs) return;
       lastFireRef.current = now;
+      peaksRef.current = [];
       onShakeRef.current();
     });
     return () => sub.remove();
-  }, [enabled, intervalMs, threshold, cooldownMs]);
+  }, [enabled, intervalMs, peakThreshold, requiredPeaks, windowMs, minPeakSpacingMs, cooldownMs]);
 }
