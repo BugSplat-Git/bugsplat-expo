@@ -250,7 +250,9 @@ export default function App() {
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
           <View style={styles.topBar}>
-            <Image source={require('./assets/bugsplat_wordmark.png')} style={styles.wordmark} resizeMode="contain" />
+            <View style={styles.wordmarkWrap}>
+              <Image source={require('./assets/bugsplat_wordmark.png')} style={styles.wordmark} resizeMode="contain" />
+            </View>
             <View style={styles.topBarRight}>
               <Text style={styles.sdkVersion}>{`v${SDK_VERSION}`}</Text>
               <View style={styles.connectedPill}>
@@ -364,7 +366,11 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
 
   topBar: { flexDirection: 'row', alignItems: 'center' },
-  wordmark: { flex: 1, height: 28, alignSelf: 'flex-start' },
+  // Flex container takes the available space; the image inside it stays at its
+  // intrinsic aspect ratio and pins to the leading edge — fixes the phantom
+  // centering caused by stretching the Image itself with resizeMode=contain.
+  wordmarkWrap: { flex: 1, alignItems: 'flex-start' },
+  wordmark: { height: 28, aspectRatio: 1000 / 359 },
   topBarRight: { flexDirection: 'row', alignItems: 'center' },
   sdkVersion: {
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),

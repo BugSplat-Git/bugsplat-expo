@@ -92,8 +92,11 @@ public class BugsplatExpoModule: Module {
     }
 
     Function("crash") {
-      let array = NSArray()
-      _ = array.object(at: 99)
+      // fatalError is documented as unrecoverable and is preserved by the Swift
+      // Release optimizer. The earlier NSArray.object(at: 99) trick was being
+      // optimized out (discarded result + ObjC-bridged side effect the Swift
+      // optimizer doesn't model), making the Crash card a no-op in Release.
+      fatalError("BugSplat test crash")
     }
 
     Function("hang") {
