@@ -84,6 +84,9 @@ const COLORS = {
 // native module loaded. In Expo Go or a dev build, RN's error boundary
 // swallows it as a JS error — disable the card so the label isn't a lie.
 const crashDisabled = __DEV__ || !nativeAvailable;
+// hang() is a no-op on web (no native main thread to freeze; the web shim
+// just logs a warning), so disable the card there.
+const hangDisabled = Platform.OS === 'web';
 
 const CARDS: Array<{
   key: ActivityType;
@@ -120,6 +123,8 @@ const CARDS: Array<{
     icon: require('./assets/splat_hang.png'),
     title: 'Hang',
     subtitle: 'Freeze main thread (native hang report)',
+    disabled: hangDisabled,
+    disabledHint: hangDisabled ? 'Native hang detection is not available on web' : undefined,
   },
 ];
 
