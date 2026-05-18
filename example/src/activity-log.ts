@@ -9,7 +9,9 @@ export interface ActivityEntry {
 }
 
 const STORAGE_KEY = 'bugsplat_example_activity';
-const MAX_ENTRIES = 10;
+// Matches bugsplat-android's ActivityLog.MAX_ENTRIES — keeps the recent
+// activity card from overflowing the screen below the four event cards.
+const MAX_ENTRIES = 3;
 
 export async function recordActivity(type: ActivityType, detail: string): Promise<void> {
   const entries = await getActivity();
