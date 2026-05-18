@@ -30,7 +30,7 @@
     },
     "plugins": [
       ["@bugsplat/expo", {
-        "database": "your-database",
+        "database": "<your-database>",
         "enableSymbolUpload": true
       }],
       ["expo-build-properties", {
