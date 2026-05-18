@@ -33,7 +33,7 @@ Credentials for symbol upload can be set via environment variables (`BUGSPLAT_CL
   "expo": {
     "plugins": [
       ["@bugsplat/expo", {
-        "database": "your-database",
+        "database": "<your-database>",
         "enableSymbolUpload": true
       }],
       ["expo-build-properties", {
@@ -45,6 +45,8 @@ Credentials for symbol upload can be set via environment variables (`BUGSPLAT_CL
   }
 }
 ```
+
+> Replace `<your-database>` with your real BugSplat database name. The plugin rejects angle-bracket placeholders at `expo prebuild` so this exact snippet won't accidentally ship as a configuration.
 
 The `bugsplat-android` SDK requires Android minSdk 26 (Android 8.0+). If your project's minSdk is already >= 26, the `expo-build-properties` plugin is not needed.
 

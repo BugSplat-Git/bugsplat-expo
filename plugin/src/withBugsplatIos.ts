@@ -62,10 +62,19 @@ export const buildIosUploadScript = (
   appName: string,
   appVersion: string
 ): string => {
+  // Defensive validation: this helper is exported and may be called directly
+  // (e.g. from tests) without going through the top-level plugin's validation,
+  // so a missing/blank database would otherwise produce an embedded literal
+  // `-b "undefined"` and a broken upload script.
+  const database = typeof props.database === 'string' ? props.database.trim() : '';
+  if (!database) {
+    throw new Error('buildIosUploadScript: "database" is required');
+  }
+  if (!appName || !appVersion) {
+    throw new Error('buildIosUploadScript: "appName" and "appVersion" are required');
+  }
   const clientId = props.symbolUploadClientId || '${BUGSPLAT_CLIENT_ID}';
   const clientSecret = props.symbolUploadClientSecret || '${BUGSPLAT_CLIENT_SECRET}';
-  // Validated by the top-level withBugsplat plugin.
-  const database = props.database!;
 
   return [
     'if [ "${CONFIGURATION}" = "Release" ]; then',

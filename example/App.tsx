@@ -167,8 +167,13 @@ export default function App() {
       try {
         await init(DATABASE, APP_NAME, APP_VERSION);
         setConnected(true);
-      } catch {
+      } catch (e) {
         setConnected(false);
+        // Surface the underlying init failure so a misconfigured database /
+        // app metadata is diagnosable instead of silently showing "Offline".
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn('[BugSplat] init failed:', msg);
+        setStatusText(`BugSplat init failed: ${msg}`);
       }
       await refreshActivity();
     })();
@@ -188,7 +193,13 @@ export default function App() {
 
   const onCrash = useCallback(async () => {
     // Persist BEFORE triggering the native crash so the entry survives process death.
-    await recordActivity('crash', 'Native crash triggered');
+    // Don't let an AsyncStorage failure block the actual crash — that's the
+    // whole point of the card — so swallow + log any persistence error.
+    try {
+      await recordActivity('crash', 'Native crash triggered');
+    } catch (e) {
+      console.warn('[BugSplat] failed to record crash activity:', e);
+    }
     crash();
   }, []);
 
@@ -208,7 +219,13 @@ export default function App() {
   const onHang = useCallback(async () => {
     const fire = async () => {
       // Persist BEFORE triggering the hang so the entry survives ANR-kill / force-quit.
-      await recordActivity('hang', 'Main thread frozen');
+      // Same rationale as onCrash: don't let storage failure block the demo's
+      // primary action.
+      try {
+        await recordActivity('hang', 'Main thread frozen');
+      } catch (e) {
+        console.warn('[BugSplat] failed to record hang activity:', e);
+      }
       hang();
     };
     // iOS hang flow needs user action — the BugSplat-Apple hang tracker
@@ -255,10 +272,17 @@ export default function App() {
         await recordActivity('feedback', `“${title}”`);
         await refreshActivity();
       } else {
-        setStatusText('Failed to send feedback');
+        // Surface the actual reason (init failure, network error, etc.) so
+        // misconfigurations are diagnosable from the demo itself rather than
+        // hidden behind a generic message.
+        const reason = result.error ?? 'unknown error';
+        console.warn('[BugSplat] postFeedback failed:', reason);
+        setStatusText(`Failed to send feedback: ${reason}`);
       }
-    } catch {
-      setStatusText('Failed to send feedback');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn('[BugSplat] postFeedback threw:', msg);
+      setStatusText(`Failed to send feedback: ${msg}`);
     } finally {
       sendingRef.current = false;
     }

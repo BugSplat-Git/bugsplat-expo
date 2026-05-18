@@ -7,15 +7,22 @@ import type { BugSplatPluginOptions } from './types';
 const pkg = require('../../package.json');
 
 const withBugsplat: ConfigPlugin<BugSplatPluginOptions | void> = (config, props) => {
-  const options: BugSplatPluginOptions = props ?? {};
+  // Clone so we can normalize values (trim, etc.) without mutating the caller's
+  // options object. `props` types `database` as required, but it's user input
+  // from app.json — it might be undefined or a non-string at runtime.
+  const options: BugSplatPluginOptions = { ...((props ?? {}) as Partial<BugSplatPluginOptions>) } as BugSplatPluginOptions;
 
-  const database = options.database?.trim();
-  if (!database) {
+  // database arrives as user input from app.json — runtime-untyped — so guard
+  // against non-strings before .trim() (otherwise we'd throw a generic
+  // TypeError instead of the actionable plugin error below).
+  const rawDatabase: unknown = options.database;
+  if (typeof rawDatabase !== 'string' || rawDatabase.trim() === '') {
     throw new Error(
       '@bugsplat/expo: "database" is required. Set it under the plugin entry in app.json, e.g.\n' +
       '  "plugins": [["@bugsplat/expo", { "database": "my-bugsplat-db" }]]'
     );
   }
+  const database = rawDatabase.trim();
   // Reject angle-bracket placeholders like "<your-database>" — these are sentinel
   // values shipped in the sample app.json to force consumers to override them.
   if (/^<.*>$/.test(database)) {
@@ -42,16 +49,23 @@ const withBugsplat: ConfigPlugin<BugSplatPluginOptions | void> = (config, props)
       '@bugsplat/expo: app.json "expo.name" is required — it becomes the BugSplat application name on iOS.'
     );
   }
-  // Android symbol upload sends applicationId (= expo.android.package).
-  if (!config.android?.package) {
+  // Android symbol upload sends applicationId (= expo.android.package). Only
+  // enforce when the project actually targets Android — i.e. it has declared
+  // an `android` block in app.json. iOS-only projects shouldn't be blocked by
+  // an Android-specific requirement.
+  if (config.android !== undefined && !config.android.package) {
     throw new Error(
-      '@bugsplat/expo: app.json "expo.android.package" is required — it becomes the BugSplat application name on Android.'
+      '@bugsplat/expo: app.json "expo.android.package" is required when targeting Android — ' +
+      'it becomes the BugSplat application name on Android.'
     );
   }
 
   if (options.enableSymbolUpload) {
-    const clientId = options.symbolUploadClientId ?? process.env.BUGSPLAT_CLIENT_ID;
-    const clientSecret = options.symbolUploadClientSecret ?? process.env.BUGSPLAT_CLIENT_SECRET;
+    // Trim explicitly: whitespace-only credentials (from env or app.json)
+    // would otherwise pass the truthy check and be embedded verbatim into
+    // the upload scripts as garbage credentials.
+    const clientId = (options.symbolUploadClientId ?? process.env.BUGSPLAT_CLIENT_ID ?? '').trim();
+    const clientSecret = (options.symbolUploadClientSecret ?? process.env.BUGSPLAT_CLIENT_SECRET ?? '').trim();
     if (!clientId || !clientSecret) {
       throw new Error(
         '@bugsplat/expo: enableSymbolUpload is true but credentials are missing. ' +
@@ -59,6 +73,11 @@ const withBugsplat: ConfigPlugin<BugSplatPluginOptions | void> = (config, props)
         'or set the BUGSPLAT_CLIENT_ID / BUGSPLAT_CLIENT_SECRET env vars.'
       );
     }
+    // Normalize so downstream helpers embed trimmed values into Gradle/Xcode
+    // scripts. Without this, env-sourced creds with stray whitespace ride
+    // straight through to the symbol-upload CLI.
+    options.symbolUploadClientId = clientId;
+    options.symbolUploadClientSecret = clientSecret;
   }
 
   config = withBugsplatIos(config, options);

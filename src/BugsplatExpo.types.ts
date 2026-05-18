@@ -76,9 +76,9 @@ export interface BugSplatPluginOptions {
   /** BugSplat API client secret for symbol upload (or set BUGSPLAT_CLIENT_SECRET env var) */
   symbolUploadClientSecret?: string;
   /**
-   * BugSplat database name. Required — the plugin throws at prebuild if missing.
-   * Acts as the single source of truth for both symbol upload and the runtime
-   * `init()` call (read from app code via `expo-constants`).
+   * BugSplat database name. Required — the plugin throws at prebuild if missing,
+   * blank, or set to an angle-bracket placeholder. Acts as the single source of
+   * truth for both symbol upload and the runtime `init()` call.
    */
-  database?: string;
+  database: string;
 }

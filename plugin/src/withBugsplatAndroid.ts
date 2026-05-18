@@ -27,14 +27,20 @@ export const withBugsplatAndroid: ConfigPlugin<BugSplatPluginOptions> = (config,
 };
 
 export const buildAndroidGradleTask = (props: BugSplatPluginOptions): string => {
+  // Defensive validation: this helper is exported and may be called directly
+  // (e.g. from tests) without going through the top-level plugin's validation,
+  // so a missing/blank database would otherwise produce an embedded literal
+  // `"undefined"` and a broken Gradle task.
+  const database = typeof props.database === 'string' ? props.database.trim() : '';
+  if (!database) {
+    throw new Error('buildAndroidGradleTask: "database" is required');
+  }
   const clientId = props.symbolUploadClientId
     ? `"${props.symbolUploadClientId}"`
     : 'System.getenv("BUGSPLAT_CLIENT_ID") ?: ""';
   const clientSecret = props.symbolUploadClientSecret
     ? `"${props.symbolUploadClientSecret}"`
     : 'System.getenv("BUGSPLAT_CLIENT_SECRET") ?: ""';
-  // Validated by the top-level withBugsplat plugin.
-  const database = props.database!;
 
   return [
     '',

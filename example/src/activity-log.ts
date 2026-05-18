@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type ActivityType = 'crash' | 'error' | 'feedback' | 'hang';
+const ACTIVITY_TYPES: ReadonlySet<ActivityType> = new Set(['crash', 'error', 'feedback', 'hang']);
 
 export interface ActivityEntry {
   type: ActivityType;
@@ -24,13 +25,24 @@ export async function recordActivity(type: ActivityType, detail: string): Promis
 }
 
 export async function getActivity(): Promise<ActivityEntry[]> {
-  const raw = await AsyncStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
+  // Wrap the whole read: AsyncStorage.getItem can reject if storage is
+  // unavailable (corrupt DB, perms, etc.). Callers (initial load, AppState
+  // refresh) treat the activity list as best-effort, so fall back to empty
+  // rather than letting an unhandled rejection bubble up.
   try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
+    // Validate `type` against the known activity types so a corrupted or
+    // older persisted row can't sneak through as an unknown discriminator
+    // (which would crash activityDotColor / activityLabel's exhaustive switch).
     return parsed.filter((e): e is ActivityEntry =>
-      e && typeof e.type === 'string' && typeof e.detail === 'string' && typeof e.timestampMs === 'number'
+      e &&
+      typeof e.type === 'string' &&
+      ACTIVITY_TYPES.has(e.type as ActivityType) &&
+      typeof e.detail === 'string' &&
+      typeof e.timestampMs === 'number'
     );
   } catch {
     return [];

@@ -49,7 +49,7 @@ describe('withBugsplatAndroid', () => {
   });
 
   it('adds INTERNET and ACCESS_NETWORK_STATE permissions', () => {
-    withBugsplatAndroid(baseConfig, {});
+    withBugsplatAndroid(baseConfig, {} as any);
     expect(AndroidConfig.Permissions.withPermissions).toHaveBeenCalledWith(
       baseConfig,
       [
@@ -60,12 +60,12 @@ describe('withBugsplatAndroid', () => {
   });
 
   it('sets extractNativeLibs to true for Crashpad handler', () => {
-    const result: any = withBugsplatAndroid(baseConfig, {});
+    const result: any = withBugsplatAndroid(baseConfig, {} as any);
     expect(result.modResults.manifest.application[0].$['android:extractNativeLibs']).toBe('true');
   });
 
   it('does not add Gradle task when enableSymbolUpload is false', () => {
-    withBugsplatAndroid(baseConfig, {});
+    withBugsplatAndroid(baseConfig, {} as any);
     expect(mockWithAppBuildGradle).not.toHaveBeenCalled();
   });
 
@@ -127,10 +127,17 @@ describe('buildAndroidGradleTask', () => {
   });
 
   it('falls back to env vars when credentials are not provided', () => {
-    const task = buildAndroidGradleTask({});
+    const task = buildAndroidGradleTask({ database: 'my-db' });
     expect(task).toContain('System.getenv("BUGSPLAT_CLIENT_ID")');
     expect(task).toContain('System.getenv("BUGSPLAT_CLIENT_SECRET")');
-    expect(task).toContain('System.getenv("BUGSPLAT_DATABASE")');
+  });
+
+  it('throws if database is missing — prevents emitting bsDatabase = "undefined"', () => {
+    expect(() => buildAndroidGradleTask({} as any)).toThrow(/database/);
+  });
+
+  it('throws if database is whitespace-only', () => {
+    expect(() => buildAndroidGradleTask({ database: '   ' })).toThrow(/database/);
   });
 
   it('uploads .so files', () => {
@@ -152,10 +159,17 @@ describe('buildAndroidGradleTask', () => {
     expect(task).toContain('skipping symbol upload');
   });
 
-  it('wraps exec in doLast block for graceful skipping', () => {
+  it('wraps upload work in doLast block for graceful skipping', () => {
     const task = buildAndroidGradleTask({ database: 'my-db' });
     expect(task).toContain('doLast {');
-    expect(task).toContain('exec {');
+    // Gradle 9 removed Project.exec(Closure); we use ProcessBuilder instead.
+    expect(task).toContain('new ProcessBuilder');
     expect(task).not.toContain('tasks.register("uploadBugsplatSymbols", Exec)');
+  });
+
+  it('auto-chains uploadBugsplatSymbols onto assembleRelease', () => {
+    const task = buildAndroidGradleTask({ database: 'my-db' });
+    expect(task).toContain('tasks.matching { it.name == "assembleRelease" }.configureEach');
+    expect(task).toContain('finalizedBy("uploadBugsplatSymbols")');
   });
 });
