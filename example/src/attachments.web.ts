@@ -1,11 +1,19 @@
-import type { PickedFile } from './pick-file.types';
+import { type BugSplatAttachment } from '@bugsplat/expo';
+import type { PickedFile } from './attachments.types';
+
+/**
+ * Web attachment helpers. The native build uses `attachments.ts`.
+ *
+ * In the browser, `fetch` / `FormData` / `Blob` are the platform's own, so a
+ * picked `File` (a `Blob` subclass) and an in-memory `Blob` upload directly.
+ */
 
 /**
  * Open the browser's file picker. expo-document-picker's web shim opens the
- * dialog by dispatching a synthetic `MouseEvent('click')`, which Safari (and
- * some other browsers) refuse to honor for file inputs. Calling `input.click()`
- * directly — synchronously, from the user-gesture call stack — is honored
- * everywhere. Resolves to `null` when the user cancels.
+ * dialog by dispatching a synthetic `MouseEvent('click')`, which Safari refuses
+ * to honor for file inputs; calling `input.click()` directly — synchronously,
+ * from the user-gesture call stack — is honored everywhere. Resolves to `null`
+ * when the user cancels.
  */
 export function pickFile(): Promise<PickedFile | null> {
   return new Promise((resolve) => {
@@ -35,7 +43,6 @@ export function pickFile(): Promise<PickedFile | null> {
               name: file.name,
               size: file.size,
               mimeType: file.type || undefined,
-              // Web: a File is a Blob subclass, which BugSplat accepts directly.
               attachment: { filename: file.name, data: file },
             }
           : null
@@ -46,4 +53,9 @@ export function pickFile(): Promise<PickedFile | null> {
 
     input.click();
   });
+}
+
+/** Build a BugSplat attachment from in-memory log text. */
+export function buildLogAttachment(filename: string, text: string): BugSplatAttachment {
+  return { filename, data: new Blob([text], { type: 'text/plain' }) };
 }

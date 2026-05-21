@@ -16,8 +16,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { pickFile as openFilePicker } from './pick-file';
-import type { PickedFile } from './pick-file.types';
+import { buildLogAttachment, pickFile as openFilePicker } from './attachments';
+import type { PickedFile } from './attachments.types';
 import { COLORS } from './theme';
 
 type Category = 'Bug' | 'Feature' | 'Other';
@@ -140,15 +140,12 @@ export function FeedbackSheet(props: FeedbackSheetProps) {
       const attachments: BugSplatAttachment[] = [];
       if (file) attachments.push(file.attachment);
       if (includeLogs) {
-        // A Blob built from a *string* uploads via FormData on web and native
-        // alike — this mirrors how @bugsplat/react attaches the component
-        // stack. (A Blob built from a Uint8Array throws on React Native:
-        // "creating blobs from ArrayBuffer ... are not supported".)
-        const logText = buildDemoLog({ appName, appVersion, sdkVersion, database });
-        attachments.push({
-          filename: 'bugsplat-demo-log.txt',
-          data: new Blob([logText], { type: 'text/plain' }),
-        });
+        attachments.push(
+          buildLogAttachment(
+            'bugsplat-demo-log.txt',
+            buildDemoLog({ appName, appVersion, sdkVersion, database })
+          )
+        );
       }
 
       const result = await postFeedback(trimmedTitle, {

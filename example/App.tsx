@@ -330,7 +330,9 @@ export default function App() {
             )}
           </View>
 
-          <Text style={styles.footer}>{statusText}</Text>
+          {Platform.OS !== 'web' && (
+            <Text style={styles.footer}>{statusText}</Text>
+          )}
         </ScrollView>
 
         <FeedbackSheet

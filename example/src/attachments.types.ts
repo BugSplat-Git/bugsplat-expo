@@ -2,7 +2,7 @@ import type { BugSplatAttachment } from '@bugsplat/expo';
 
 /**
  * A file chosen by the user, normalized across the native and web pickers
- * (`pick-file.ts` / `pick-file.web.ts`). Shared so `FeedbackSheet` doesn't
+ * (`attachments.ts` / `attachments.web.ts`). Shared so `FeedbackSheet` doesn't
  * care which platform produced it.
  */
 export interface PickedFile {
