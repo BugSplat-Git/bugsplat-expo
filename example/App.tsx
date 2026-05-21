@@ -1,17 +1,15 @@
-import { crash, hang, init, nativeAvailable, post, postFeedback } from '@bugsplat/expo';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { crash, hang, init, nativeAvailable, post } from '@bugsplat/expo';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   AppState,
   Image,
   Linking,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +21,8 @@ import {
   getActivity,
   recordActivity,
 } from './src/activity-log';
+import { FeedbackSheet } from './src/FeedbackSheet';
+import { COLORS } from './src/theme';
 import { useShake } from './src/use-shake';
 
 // Single source of truth: read directly from app.json. Metro bundles JSON
@@ -61,24 +61,6 @@ if (!rawAppName || !rawAppVersion) {
 const APP_NAME: string = rawAppName;
 const APP_VERSION: string = rawAppVersion;
 const SDK_VERSION = '0.6.0';
-
-const COLORS = {
-  screenBg: '#FAF8F2',
-  cardBg: '#FFFFFF',
-  cardStroke: '#ECEAE2',
-  textPrimary: '#0E1116',
-  textSecondary: '#6B7280',
-  textTertiary: '#9CA3AF',
-  link: '#1F73E8',
-  badgeBg: '#F1EFE8',
-  connectedBg: '#FFFFFF',
-  connectedStroke: '#E4E2DA',
-  connectedDot: '#22C55E',
-  activityCrash: '#1F73E8',
-  activityError: '#E5B142',
-  activityFeedback: '#22C55E',
-  activityHang: '#E5B142',
-};
 
 // crash() only produces a real native crash in a release build with the
 // native module loaded. In Expo Go or a dev build, RN's error boundary
@@ -151,10 +133,7 @@ export default function App() {
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [statusText, setStatusText] = useState('Shake the device to send feedback anytime.');
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackTitle, setFeedbackTitle] = useState('');
-  const [feedbackBody, setFeedbackBody] = useState('');
   const [nowTick, setNowTick] = useState(Date.now());
-  const sendingRef = useRef(false);
 
   const refreshActivity = useCallback(async () => {
     const list = await getActivity();
@@ -249,44 +228,23 @@ export default function App() {
   }, []);
 
   const onFeedback = useCallback(() => {
-    setFeedbackTitle('');
-    setFeedbackBody('');
     setFeedbackOpen(true);
   }, []);
 
   // Shake-to-feedback: matches the Android demo's ShakeDetector behavior.
-  // Disabled while the modal is open so the user can't re-trigger it mid-input.
+  // Disabled while the sheet is open so the user can't re-trigger it mid-input.
   useShake(onFeedback, { enabled: !feedbackOpen });
 
-  const onSubmitFeedback = useCallback(async () => {
-    if (sendingRef.current) return;
-    const title = feedbackTitle.trim();
-    if (!title) return;
-    sendingRef.current = true;
-    setStatusText('Sending feedback...');
-    setFeedbackOpen(false);
-    try {
-      const result = await postFeedback(title, { description: feedbackBody.trim() || undefined });
-      if (result.success) {
-        setStatusText('Feedback sent — thank you!');
-        await recordActivity('feedback', `“${title}”`);
-        await refreshActivity();
-      } else {
-        // Surface the actual reason (init failure, network error, etc.) so
-        // misconfigurations are diagnosable from the demo itself rather than
-        // hidden behind a generic message.
-        const reason = result.error ?? 'unknown error';
-        console.warn('[BugSplat] postFeedback failed:', reason);
-        setStatusText(`Failed to send feedback: ${reason}`);
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.warn('[BugSplat] postFeedback threw:', msg);
-      setStatusText(`Failed to send feedback: ${msg}`);
-    } finally {
-      sendingRef.current = false;
-    }
-  }, [feedbackTitle, feedbackBody, refreshActivity]);
+  // The FeedbackSheet owns the form, submit call, and error handling — it
+  // calls this only after a successful submit so we can log the activity.
+  const handleFeedbackSubmitted = useCallback(
+    async (title: string) => {
+      setStatusText('Feedback sent — thank you!');
+      await recordActivity('feedback', `“${title}”`);
+      await refreshActivity();
+    },
+    [refreshActivity]
+  );
 
   const onViewDashboard = useCallback(() => {
     const url = `https://app.bugsplat.com/v2/dashboard?database=${encodeURIComponent(DATABASE)}`;
@@ -375,41 +333,15 @@ export default function App() {
           <Text style={styles.footer}>{statusText}</Text>
         </ScrollView>
 
-        <Modal visible={feedbackOpen} animationType="slide" transparent onRequestClose={() => setFeedbackOpen(false)}>
-          <View style={styles.modalBackdrop}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Send Feedback</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Subject"
-                placeholderTextColor={COLORS.textTertiary}
-                value={feedbackTitle}
-                onChangeText={setFeedbackTitle}
-                autoFocus
-              />
-              <TextInput
-                style={[styles.modalInput, styles.modalInputMultiline]}
-                placeholder="Description (optional)"
-                placeholderTextColor={COLORS.textTertiary}
-                value={feedbackBody}
-                onChangeText={setFeedbackBody}
-                multiline
-              />
-              <View style={styles.modalButtons}>
-                <Pressable onPress={() => setFeedbackOpen(false)} style={({ pressed }) => [styles.modalButton, pressed && { opacity: 0.6 }]}>
-                  <Text style={styles.modalButtonSecondary}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  onPress={onSubmitFeedback}
-                  disabled={!feedbackTitle.trim()}
-                  style={({ pressed }) => [styles.modalButton, pressed && { opacity: 0.6 }]}
-                >
-                  <Text style={[styles.modalButtonPrimary, !feedbackTitle.trim() && { opacity: 0.4 }]}>Submit</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
+        <FeedbackSheet
+          visible={feedbackOpen}
+          onClose={() => setFeedbackOpen(false)}
+          onSubmitted={handleFeedbackSubmitted}
+          database={DATABASE}
+          appName={APP_NAME}
+          appVersion={APP_VERSION}
+          sdkVersion={SDK_VERSION}
+        />
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -525,23 +457,4 @@ const styles = StyleSheet.create({
   activityTime: { fontSize: 13, color: COLORS.textTertiary, marginLeft: 10 },
 
   footer: { marginTop: 18, textAlign: 'center', fontSize: 13, color: COLORS.textTertiary },
-
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', paddingHorizontal: 24 },
-  modalCard: { backgroundColor: '#fff', borderRadius: 14, padding: 20 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 12 },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: COLORS.cardStroke,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: COLORS.textPrimary,
-    marginTop: 8,
-  },
-  modalInputMultiline: { minHeight: 90, textAlignVertical: 'top' },
-  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 14 },
-  modalButton: { paddingHorizontal: 14, paddingVertical: 8, marginLeft: 8 },
-  modalButtonSecondary: { fontSize: 15, color: COLORS.textSecondary, fontWeight: '600' },
-  modalButtonPrimary: { fontSize: 15, color: COLORS.link, fontWeight: '700' },
 });
