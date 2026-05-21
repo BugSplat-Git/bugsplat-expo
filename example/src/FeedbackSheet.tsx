@@ -1,6 +1,5 @@
 import { postFeedback, type BugSplatAttachment } from '@bugsplat/expo';
 import * as Clipboard from 'expo-clipboard';
-import * as DocumentPicker from 'expo-document-picker';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,6 +16,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { pickFile as openFilePicker } from './pick-file';
+import type { PickedFile } from './pick-file.types';
 import { COLORS } from './theme';
 
 type Category = 'Bug' | 'Feature' | 'Other';
@@ -44,35 +45,14 @@ function formatBytes(bytes?: number): string {
 }
 
 /** Short type label for the attachment chip, e.g. "PNG" / "TXT" / "FILE". */
-function fileKind(asset: DocumentPicker.DocumentPickerAsset): string {
-  const ext = asset.name.match(/\.([a-z0-9]+)$/i);
+function fileKind(file: PickedFile): string {
+  const ext = file.name.match(/\.([a-z0-9]+)$/i);
   if (ext) return ext[1].toUpperCase();
-  if (asset.mimeType) {
-    const parts = asset.mimeType.split('/');
+  if (file.mimeType) {
+    const parts = file.mimeType.split('/');
     return (parts[1] || parts[0] || 'file').toUpperCase().slice(0, 4);
   }
   return 'FILE';
-}
-
-/**
- * UTF-8 encode a string to bytes. Uses the global `TextEncoder` when present
- * (Hermes / web) and falls back to a hand-rolled encoder so the demo's log
- * attachment works regardless of the JS engine.
- */
-function utf8Bytes(str: string): Uint8Array {
-  if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(str);
-  const out: number[] = [];
-  for (let i = 0; i < str.length; i++) {
-    const c = str.charCodeAt(i);
-    if (c < 0x80) {
-      out.push(c);
-    } else if (c < 0x800) {
-      out.push(0xc0 | (c >> 6), 0x80 | (c & 0x3f));
-    } else {
-      out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 0x3f), 0x80 | (c & 0x3f));
-    }
-  }
-  return new Uint8Array(out);
 }
 
 /**
@@ -101,19 +81,6 @@ function buildDemoLog(p: Pick<FeedbackSheetProps, 'appName' | 'appVersion' | 'sd
   ].join('\n');
 }
 
-/** Turn a picked document into a BugSplat attachment (web File vs. native uri). */
-function assetToAttachment(asset: DocumentPicker.DocumentPickerAsset): BugSplatAttachment {
-  if (asset.file) {
-    // Web: expo-document-picker hands back a real File (a Blob subclass).
-    return { filename: asset.name, data: asset.file };
-  }
-  // Native: pass a file reference; bugsplat-js reads it from the uri.
-  return {
-    filename: asset.name,
-    data: { uri: asset.uri, type: asset.mimeType } as BugSplatAttachment['data'],
-  };
-}
-
 export function FeedbackSheet(props: FeedbackSheetProps) {
   const { visible, onClose, onSubmitted, database, appName, appVersion, sdkVersion } = props;
   const insets = useSafeAreaInsets();
@@ -124,7 +91,7 @@ export function FeedbackSheet(props: FeedbackSheetProps) {
   const [description, setDescription] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [file, setFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [file, setFile] = useState<PickedFile | null>(null);
   const [includeLogs, setIncludeLogs] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [titleInvalid, setTitleInvalid] = useState(false);
@@ -152,10 +119,8 @@ export function FeedbackSheet(props: FeedbackSheetProps) {
 
   const pickFile = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, base64: false });
-      if (!result.canceled && result.assets[0]) {
-        setFile(result.assets[0]);
-      }
+      const picked = await openFilePicker();
+      if (picked) setFile(picked);
     } catch (e) {
       console.warn('[BugSplat] file pick failed:', e);
     }
@@ -171,16 +136,21 @@ export function FeedbackSheet(props: FeedbackSheetProps) {
     setSubmitting(true);
     setErrorText(null);
 
-    const attachments: BugSplatAttachment[] = [];
-    if (file) attachments.push(assetToAttachment(file));
-    if (includeLogs) {
-      attachments.push({
-        filename: 'bugsplat-demo-log.txt',
-        data: utf8Bytes(buildDemoLog({ appName, appVersion, sdkVersion, database })),
-      });
-    }
-
     try {
+      const attachments: BugSplatAttachment[] = [];
+      if (file) attachments.push(file.attachment);
+      if (includeLogs) {
+        // A Blob built from a *string* uploads via FormData on web and native
+        // alike — this mirrors how @bugsplat/react attaches the component
+        // stack. (A Blob built from a Uint8Array throws on React Native:
+        // "creating blobs from ArrayBuffer ... are not supported".)
+        const logText = buildDemoLog({ appName, appVersion, sdkVersion, database });
+        attachments.push({
+          filename: 'bugsplat-demo-log.txt',
+          data: new Blob([logText], { type: 'text/plain' }),
+        });
+      }
+
       const result = await postFeedback(trimmedTitle, {
         description: description.trim() || undefined,
         user: name.trim() || undefined,
