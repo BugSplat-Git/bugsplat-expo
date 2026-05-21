@@ -14,7 +14,6 @@
     "@bugsplat/expo": "file:..",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "expo": "~55.0.8",
-    "expo-blob": "~55.0.13",
     "expo-build-properties": "^55.0.10",
     "expo-clipboard": "~55.0.13",
     "expo-document-picker": "~55.0.13",
