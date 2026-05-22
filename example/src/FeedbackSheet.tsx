@@ -36,6 +36,13 @@ export interface FeedbackSheetProps {
   sdkVersion: string;
 }
 
+/** Open an external URL, logging failures instead of silently swallowing them. */
+function openExternal(url: string): void {
+  Linking.openURL(url).catch((e) => {
+    console.warn(`[BugSplat] failed to open ${url}:`, e);
+  });
+}
+
 /** Human-readable byte size, e.g. "287 KB" / "1.2 MB". */
 function formatBytes(bytes?: number): string {
   if (bytes == null) return '';
@@ -187,7 +194,15 @@ export function FeedbackSheet(props: FeedbackSheetProps) {
     const url = crashId != null
       ? `https://app.bugsplat.com/v2/crash?database=${encodeURIComponent(database)}&id=${crashId}`
       : `https://app.bugsplat.com/v2/dashboard?database=${encodeURIComponent(database)}`;
-    Linking.openURL(url).catch(() => {});
+    openExternal(url);
+  };
+
+  // Dismiss the sheet, but never mid-submit: the component stays mounted, so an
+  // in-flight postFeedback could otherwise resolve onto a reset/reopened sheet
+  // and clobber its state or re-fire onSubmitted.
+  const handleDismiss = () => {
+    if (submitting) return;
+    onClose();
   };
 
   const triggerHint =
@@ -199,18 +214,18 @@ export function FeedbackSheet(props: FeedbackSheetProps) {
   const footerPad = Math.max(insets.bottom, 16);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleDismiss}>
       <KeyboardAvoidingView
         style={styles.root}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Pressable style={styles.backdrop} onPress={onClose} />
+        <Pressable style={styles.backdrop} onPress={handleDismiss} />
         <View style={styles.sheet}>
           {phase === 'form' ? (
             <>
               <View style={styles.header}>
                 <Text style={styles.headerTitle}>Send feedback</Text>
-                <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Close">
+                <Pressable onPress={handleDismiss} hitSlop={12} accessibilityLabel="Close">
                   <Text style={styles.closeIcon}>✕</Text>
                 </Pressable>
               </View>
@@ -412,7 +427,9 @@ export function FeedbackSheet(props: FeedbackSheetProps) {
                 Powered by{' '}
                 <Text
                   style={styles.poweredByLink}
-                  onPress={() => Linking.openURL('https://bugsplat.com').catch(() => {})}
+                  onPress={() => openExternal('https://bugsplat.com')}
+                  accessibilityRole="link"
+                  accessibilityLabel="BugSplat website"
                 >
                   BugSplat
                 </Text>

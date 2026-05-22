@@ -1,4 +1,5 @@
 import { crash, hang, init, nativeAvailable, post } from '@bugsplat/expo';
+import { version as SDK_VERSION } from '@bugsplat/expo/package.json';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -60,7 +61,6 @@ if (!rawAppName || !rawAppVersion) {
 }
 const APP_NAME: string = rawAppName;
 const APP_VERSION: string = rawAppVersion;
-const SDK_VERSION = '0.6.0';
 
 // crash() only produces a real native crash in a release build with the
 // native module loaded. In Expo Go or a dev build, RN's error boundary
@@ -237,11 +237,18 @@ export default function App() {
 
   // The FeedbackSheet owns the form, submit call, and error handling — it
   // calls this only after a successful submit so we can log the activity.
+  // FeedbackSheet invokes this fire-and-forget (the prop is `() => void`), so
+  // swallow + log any persistence failure here rather than letting it surface
+  // as an unhandled promise rejection.
   const handleFeedbackSubmitted = useCallback(
     async (title: string) => {
       setStatusText('Feedback sent — thank you!');
-      await recordActivity('feedback', `“${title}”`);
-      await refreshActivity();
+      try {
+        await recordActivity('feedback', `“${title}”`);
+        await refreshActivity();
+      } catch (e) {
+        console.warn('[BugSplat] failed to record feedback activity:', e);
+      }
     },
     [refreshActivity]
   );
