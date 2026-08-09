@@ -19,8 +19,10 @@ BugSplat's `@bugsplat/expo` package provides crash and error reporting for Expo 
 ## Installation
 
 ```sh
-npx expo install @bugsplat/expo expo-file-system
+npx expo install @bugsplat/expo expo-blob expo-file-system
 ```
+
+`expo-blob` is a peer dependency because it ships native code that must match your project's Expo SDK version. Installing it with `expo install` picks the build that matches your SDK.
 
 ## Configuration
 
