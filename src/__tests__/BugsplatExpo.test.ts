@@ -1,5 +1,10 @@
 jest.mock('expo-blob', () => {});
 
+const mockFileBytes = jest.fn();
+jest.mock('expo-file-system', () => ({
+  File: jest.fn().mockImplementation((uri: string) => ({ bytes: () => mockFileBytes(uri) })),
+}));
+
 const mockExpoFetch = jest.fn();
 jest.mock('expo/fetch', () => ({
   fetch: mockExpoFetch,
@@ -52,6 +57,11 @@ import {
   crash,
   hang,
 } from '../BugsplatExpo';
+
+function postedPart(fn: jest.Mock) {
+  const options = fn.mock.calls[0][1];
+  return options.attachments[0].data;
+}
 
 describe('BugsplatExpo (native)', () => {
   beforeEach(() => {
@@ -127,11 +137,51 @@ describe('BugsplatExpo (native)', () => {
       );
     });
 
-    it('forwards attachments to JS client post', async () => {
+    it('converts a Uint8Array attachment into a named expo/fetch bytes part', async () => {
       await init('test-db', 'MyApp', '1.0.0');
-      const attachments = [
-        { filename: 'componentStack.txt', data: new Uint8Array([1, 2, 3]) },
-      ];
+      const data = new Uint8Array([1, 2, 3]);
+      await post(new Error('x'), { attachments: [{ filename: 'state.bin', data }] });
+
+      const part = postedPart(mockBugSplatInstance.post);
+      expect(part).not.toBeInstanceOf(Uint8Array);
+      expect(part.name).toBe('state.bin');
+      expect(part.type).toBe('application/octet-stream');
+      await expect(part.bytes()).resolves.toBe(data);
+    });
+
+    it('converts a { uri } file ref into a bytes part read from the file system', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      const fileBytes = new Uint8Array([9, 8, 7]);
+      mockFileBytes.mockResolvedValue(fileBytes);
+      await post(new Error('x'), {
+        attachments: [{ filename: 'shot.png', data: { uri: 'file:///cache/shot.png', type: 'image/png' } }],
+      });
+
+      const part = postedPart(mockBugSplatInstance.post);
+      expect(part).not.toHaveProperty('uri');
+      expect(part.name).toBe('shot.png');
+      expect(part.type).toBe('image/png');
+      await expect(part.bytes()).resolves.toBe(fileBytes);
+      expect(mockFileBytes).toHaveBeenCalledWith('file:///cache/shot.png');
+    });
+
+    it('names a blob-like attachment that is not a global Blob', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      const bytes = new Uint8Array([4, 5]);
+      const expoBlob = { type: 'text/plain', size: 2, bytes: async () => bytes };
+      await post(new Error('x'), {
+        attachments: [{ filename: 'log.txt', data: expoBlob as unknown as Blob }],
+      });
+
+      const part = postedPart(mockBugSplatInstance.post);
+      expect(part.name).toBe('log.txt');
+      expect(part.type).toBe('text/plain');
+      await expect(part.bytes()).resolves.toBe(bytes);
+    });
+
+    it('passes a global Blob attachment through unchanged', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      const attachments = [{ filename: 'componentStack.txt', data: new Blob(['stack']) }];
       await post(new Error('x'), { attachments });
       expect(mockBugSplatInstance.post).toHaveBeenCalledWith(
         expect.any(Error),
@@ -228,6 +278,19 @@ describe('BugsplatExpo (native)', () => {
         'Login button broken',
         { description: 'Nothing happens when I tap it' }
       );
+    });
+
+    it('converts { uri } file refs into expo/fetch bytes parts', async () => {
+      await init('test-db', 'MyApp', '1.0.0');
+      await postFeedback('Bug', {
+        attachments: [{ filename: 'shot.png', data: { uri: 'file:///cache/shot.png', type: 'image/png' } }],
+      });
+
+      const part = postedPart(mockBugSplatInstance.postFeedback);
+      expect(part).not.toHaveProperty('uri');
+      expect(part.name).toBe('shot.png');
+      expect(part.type).toBe('image/png');
+      expect(typeof part.bytes).toBe('function');
     });
 
     it('passes through user/email/appKey overrides', async () => {

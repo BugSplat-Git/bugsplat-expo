@@ -40,6 +40,7 @@
   "devDependencies": {
     "@types/react": "~19.1.1",
     "expo": "~55.0.8",
+    "expo-file-system": "~55.0.0",
     "expo-module-scripts": "^55.0.2",
     "jest-expo": "^55.0.11",
     "react": "19.2.0",
@@ -50,6 +51,7 @@
   "peerDependencies": {
     "@bugsplat/symbol-upload": "*",
     "expo": "*",
+    "expo-file-system": "*",
     "react": "*",
     "react-native": "*"
   },

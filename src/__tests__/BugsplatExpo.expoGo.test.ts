@@ -1,5 +1,10 @@
 jest.mock('expo-blob', () => {});
 
+const mockFileBytes = jest.fn();
+jest.mock('expo-file-system', () => ({
+  File: jest.fn().mockImplementation((uri: string) => ({ bytes: () => mockFileBytes(uri) })),
+}));
+
 const mockExpoFetch = jest.fn();
 jest.mock('expo/fetch', () => ({
   fetch: mockExpoFetch,
@@ -125,15 +130,21 @@ describe('BugsplatExpo (Expo Go / JS fallback)', () => {
       expect(mockBugSplatInstance.post).toHaveBeenCalledWith(error, undefined);
     });
 
-    it('forwards attachments to JS client post', async () => {
+    it('forwards attachments to JS client post as expo/fetch bytes parts', async () => {
       await init('test-db', 'MyApp', '1.0.0');
-      const attachments = [
-        { filename: 'componentStack.txt', data: new Uint8Array([1, 2, 3]) },
-      ];
-      await post(new Error('x'), { attachments });
+      await post(new Error('x'), {
+        attachments: [{ filename: 'componentStack.txt', data: new Uint8Array([1, 2, 3]) }],
+      });
       expect(mockBugSplatInstance.post).toHaveBeenCalledWith(
         expect.any(Error),
-        expect.objectContaining({ attachments })
+        expect.objectContaining({
+          attachments: [
+            {
+              filename: 'componentStack.txt',
+              data: expect.objectContaining({ name: 'componentStack.txt', bytes: expect.any(Function) }),
+            },
+          ],
+        })
       );
     });
 
@@ -264,7 +275,15 @@ describe('BugsplatExpo (Expo Go / JS fallback)', () => {
       await postFeedback('subject', { attachments, attributes });
       expect(mockBugSplatInstance.postFeedback).toHaveBeenCalledWith(
         'subject',
-        expect.objectContaining({ attachments, attributes })
+        expect.objectContaining({
+          attachments: [
+            {
+              filename: 'log.txt',
+              data: expect.objectContaining({ name: 'log.txt', bytes: expect.any(Function) }),
+            },
+          ],
+          attributes,
+        })
       );
     });
 
