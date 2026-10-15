@@ -14,23 +14,23 @@
     "@bugsplat/expo": "file:..",
     "@bugsplat/react": "^2.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "expo": "~57.0.11",
-    "expo-blob": "~57.0.1",
-    "expo-build-properties": "~57.0.9",
-    "expo-clipboard": "~57.0.1",
-    "expo-document-picker": "~57.0.1",
-    "expo-file-system": "~57.0.2",
-    "expo-sensors": "~57.0.2",
-    "expo-system-ui": "~57.0.2",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "react-native": "0.86.2",
-    "react-native-safe-area-context": "~5.7.0",
-    "react-native-web": "~0.21.0"
+    "expo": "~58.0.11",
+    "expo-blob": "~58.0.3",
+    "expo-build-properties": "~58.0.10",
+    "expo-clipboard": "~58.0.3",
+    "expo-document-picker": "~58.0.4",
+    "expo-file-system": "~58.0.9",
+    "expo-sensors": "~58.0.4",
+    "expo-system-ui": "~58.0.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-web": "^0.21.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "@bugsplat/symbol-upload": "^10.2.4",
-    "babel-preset-expo": "~57.0.6"
+    "babel-preset-expo": "~58.0.0"
   }
 }
