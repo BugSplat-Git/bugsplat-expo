@@ -69,6 +69,7 @@ ios/Frameworks/
 build/
 plugin/build/
 plugin/tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # Tarballs
 *.tgz

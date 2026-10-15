@@ -14,3 +14,6 @@ __tests__
 /example/
 /plugin/src/
 /plugin/tsconfig.json
+
+# TypeScript incremental build info
+.tsbuildinfo

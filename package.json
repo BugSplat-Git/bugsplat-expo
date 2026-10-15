@@ -33,24 +33,24 @@
   "author": "BugSplat <support@bugsplat.com> (https://bugsplat.com)",
   "license": "MIT",
   "homepage": "https://github.com/BugSplat-Git/bugsplat-expo#readme",
-  "dependencies": {
-    "@bugsplat/react": "^2.1.1",
-    "expo-blob": "^55.0.13"
-  },
   "devDependencies": {
-    "@types/react": "~19.1.1",
-    "expo": "~55.0.8",
-    "expo-file-system": "~55.0.0",
-    "expo-module-scripts": "^55.0.2",
-    "jest-expo": "^55.0.11",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "react-native": "0.83.2",
-    "ts-jest": "^29.4.6"
+    "@bugsplat/react": "^2.1.1",
+    "@types/react": "~19.3.0",
+    "expo": "~58.0.11",
+    "expo-blob": "~58.0.3",
+    "expo-file-system": "~58.0.9",
+    "expo-module-scripts": "~56.0.8",
+    "jest-expo": "~58.0.11",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.0",
+    "ts-jest": "^29.4.15"
   },
   "peerDependencies": {
+    "@bugsplat/react": "^2.1.1",
     "@bugsplat/symbol-upload": "*",
     "expo": "*",
+    "expo-blob": ">=55.0.0",
     "expo-file-system": "*",
     "react": "*",
     "react-native": "*"

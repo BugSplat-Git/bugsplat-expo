@@ -19,8 +19,12 @@ BugSplat's `@bugsplat/expo` package provides crash and error reporting for Expo 
 ## Installation
 
 ```sh
-npx expo install @bugsplat/expo expo-file-system
+npx expo install @bugsplat/expo expo-blob expo-file-system @bugsplat/react
 ```
+
+`expo-blob`, `expo-file-system` and `@bugsplat/react` are peer dependencies so that exactly one copy of each ends up in your app. SDK 55 through 58 are supported.
+
+`expo-blob` ships native code that has to match your project's Expo SDK, so install the release line for your SDK — `58.x` for SDK 58, `57.x` for SDK 57, and so on (for example `npm install expo-blob@~58.0.3`). It is not yet listed in Expo's bundled native modules manifest, so `expo install` will not pin it for you.
 
 ## Configuration
 
