@@ -1,4 +1,10 @@
-import { ConfigPlugin, AndroidConfig, withAndroidManifest, withAppBuildGradle } from 'expo/config-plugins';
+import {
+  ConfigPlugin,
+  AndroidConfig,
+  withAndroidManifest,
+  withAppBuildGradle,
+  withGradleProperties,
+} from 'expo/config-plugins';
 import type { BugSplatPluginOptions } from './types';
 
 export const withBugsplatAndroid: ConfigPlugin<BugSplatPluginOptions> = (config, props) => {
@@ -10,10 +16,26 @@ export const withBugsplatAndroid: ConfigPlugin<BugSplatPluginOptions> = (config,
 
   // Crashpad's handler process (libcrashpad_handler.so) must be extracted to disk
   // so it can be executed as a separate process. Without this, native crash uploads fail.
+  //
+  // Legacy JNI packaging extracts it. We set that through the Gradle build rather
+  // than android:extractNativeLibs="true" in the manifest, because AGP on Expo
+  // SDK 58 fails the build on the manifest attribute. Expo's app/build.gradle
+  // template reads `expo.useLegacyPackaging` into
+  // packagingOptions.jniLibs.useLegacyPackaging (the same property
+  // expo-build-properties' `android.useLegacyPackaging` writes).
+  config = withGradleProperties(config, (config) => {
+    config.modResults = setLegacyPackagingProperty(config.modResults);
+    return config;
+  });
+
+  // Plugin versions up to 0.7.0 wrote android:extractNativeLibs="true", which
+  // persists in a committed android/ directory and still fails the AGP build.
+  // Legacy packaging above extracts the libraries the same way, so remove it.
+  // Any other value is left alone.
   config = withAndroidManifest(config, (config) => {
     const application = config.modResults.manifest.application?.[0];
-    if (application) {
-      application.$['android:extractNativeLibs'] = 'true';
+    if (application?.$?.['android:extractNativeLibs'] === 'true') {
+      delete application.$['android:extractNativeLibs'];
     }
     return config;
   });
@@ -24,6 +46,27 @@ export const withBugsplatAndroid: ConfigPlugin<BugSplatPluginOptions> = (config,
   }
 
   return config;
+};
+
+export const LEGACY_PACKAGING_PROPERTY = 'expo.useLegacyPackaging';
+
+// Sets expo.useLegacyPackaging=true, replacing an existing entry (the Expo
+// template ships `expo.useLegacyPackaging=false`) rather than appending a duplicate.
+export const setLegacyPackagingProperty = (
+  properties: AndroidConfig.Properties.PropertiesItem[]
+): AndroidConfig.Properties.PropertiesItem[] => {
+  let found = false;
+  const updated = properties.map((item) => {
+    if (item.type === 'property' && item.key === LEGACY_PACKAGING_PROPERTY) {
+      found = true;
+      return { ...item, value: 'true' };
+    }
+    return item;
+  });
+  if (!found) {
+    updated.push({ type: 'property', key: LEGACY_PACKAGING_PROPERTY, value: 'true' });
+  }
+  return updated;
 };
 
 export const buildAndroidGradleTask = (props: BugSplatPluginOptions): string => {
