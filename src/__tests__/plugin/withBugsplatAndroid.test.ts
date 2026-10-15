@@ -1,5 +1,9 @@
 import { AndroidConfig } from 'expo/config-plugins';
-import { withBugsplatAndroid, buildAndroidGradleTask } from '../../../plugin/src/withBugsplatAndroid';
+import {
+  withBugsplatAndroid,
+  buildAndroidGradleTask,
+  setLegacyPackagingProperty,
+} from '../../../plugin/src/withBugsplatAndroid';
 
 const mockWithAndroidManifest = jest.fn((config: any, callback: any) => {
   const modConfig = {
@@ -23,6 +27,20 @@ const mockWithAppBuildGradle = jest.fn((config: any, callback: any) => {
   return callback(modConfig);
 });
 
+const mockWithGradleProperties = jest.fn((config: any, callback: any) => {
+  const modConfig = {
+    ...config,
+    modResults: [
+      {
+        type: 'comment',
+        value: 'Use legacy packaging to compress native libraries in the resulting APK.',
+      },
+      { type: 'property', key: 'expo.useLegacyPackaging', value: 'false' },
+    ],
+  };
+  return callback(modConfig);
+});
+
 jest.mock('expo/config-plugins', () => {
   const actual = jest.requireActual('expo/config-plugins');
   return {
@@ -35,6 +53,7 @@ jest.mock('expo/config-plugins', () => {
     },
     withAndroidManifest: (a: any, b: any) => mockWithAndroidManifest(a, b),
     withAppBuildGradle: (a: any, b: any) => mockWithAppBuildGradle(a, b),
+    withGradleProperties: (a: any, b: any) => mockWithGradleProperties(a, b),
   };
 });
 
@@ -50,18 +69,60 @@ describe('withBugsplatAndroid', () => {
 
   it('adds INTERNET and ACCESS_NETWORK_STATE permissions', () => {
     withBugsplatAndroid(baseConfig, {} as any);
-    expect(AndroidConfig.Permissions.withPermissions).toHaveBeenCalledWith(
-      baseConfig,
-      [
-        'android.permission.INTERNET',
-        'android.permission.ACCESS_NETWORK_STATE',
-      ]
+    expect(AndroidConfig.Permissions.withPermissions).toHaveBeenCalledWith(baseConfig, [
+      'android.permission.INTERNET',
+      'android.permission.ACCESS_NETWORK_STATE',
+    ]);
+  });
+
+  it('sets expo.useLegacyPackaging=true so Crashpad handler is extracted to disk', () => {
+    withBugsplatAndroid(baseConfig, {} as any);
+    expect(mockWithGradleProperties).toHaveBeenCalledTimes(1);
+    const props = mockWithGradleProperties.mock.results[0].value.modResults;
+    expect(props).toContainEqual({
+      type: 'property',
+      key: 'expo.useLegacyPackaging',
+      value: 'true',
+    });
+  });
+
+  it('does not set android:extractNativeLibs in the manifest (AGP on SDK 58 rejects it)', () => {
+    const result: any = withBugsplatAndroid(baseConfig, {} as any);
+    expect(result.modResults.manifest.application[0].$).not.toHaveProperty(
+      'android:extractNativeLibs'
     );
   });
 
-  it('sets extractNativeLibs to true for Crashpad handler', () => {
+  it('removes android:extractNativeLibs="true" left by earlier plugin versions', () => {
+    mockWithAndroidManifest.mockImplementationOnce((config: any, callback: any) =>
+      callback({
+        ...config,
+        modResults: {
+          manifest: {
+            application: [
+              { $: { 'android:extractNativeLibs': 'true', 'android:name': '.MainApplication' } },
+            ],
+          },
+        },
+      })
+    );
     const result: any = withBugsplatAndroid(baseConfig, {} as any);
-    expect(result.modResults.manifest.application[0].$['android:extractNativeLibs']).toBe('true');
+    expect(result.modResults.manifest.application[0].$).toEqual({
+      'android:name': '.MainApplication',
+    });
+  });
+
+  it('leaves an app-set android:extractNativeLibs="false" alone', () => {
+    mockWithAndroidManifest.mockImplementationOnce((config: any, callback: any) =>
+      callback({
+        ...config,
+        modResults: {
+          manifest: { application: [{ $: { 'android:extractNativeLibs': 'false' } }] },
+        },
+      })
+    );
+    const result: any = withBugsplatAndroid(baseConfig, {} as any);
+    expect(result.modResults.manifest.application[0].$['android:extractNativeLibs']).toBe('false');
   });
 
   it('does not add Gradle task when enableSymbolUpload is false', () => {
@@ -93,6 +154,33 @@ describe('withBugsplatAndroid', () => {
     });
     const matches = result.modResults.contents.match(/uploadBugsplatSymbols/g);
     expect(matches).toHaveLength(1);
+  });
+});
+
+describe('setLegacyPackagingProperty', () => {
+  it('replaces the template default instead of adding a duplicate', () => {
+    const result = setLegacyPackagingProperty([
+      { type: 'property', key: 'expo.gif.enabled', value: 'true' },
+      { type: 'property', key: 'expo.useLegacyPackaging', value: 'false' },
+    ]);
+    expect(result).toEqual([
+      { type: 'property', key: 'expo.gif.enabled', value: 'true' },
+      { type: 'property', key: 'expo.useLegacyPackaging', value: 'true' },
+    ]);
+  });
+
+  it('appends the property when it is missing', () => {
+    const result = setLegacyPackagingProperty([{ type: 'comment', value: 'hello' }]);
+    expect(result).toEqual([
+      { type: 'comment', value: 'hello' },
+      { type: 'property', key: 'expo.useLegacyPackaging', value: 'true' },
+    ]);
+  });
+
+  it('is idempotent', () => {
+    const once = setLegacyPackagingProperty([]);
+    expect(setLegacyPackagingProperty(once)).toEqual(once);
+    expect(once.filter((p) => p.type === 'property')).toHaveLength(1);
   });
 });
 

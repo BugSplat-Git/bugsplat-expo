@@ -421,7 +421,7 @@ To trigger and verify:
 
 ### Android: Crashes not uploading on emulator
 
-The Crashpad handler process requires native libraries to be extracted to disk. The `@bugsplat/expo` config plugin sets `extractNativeLibs=true` automatically. If you're still not seeing crashes:
+The Crashpad handler process requires native libraries to be extracted to disk. The `@bugsplat/expo` config plugin turns on legacy JNI packaging automatically by setting `expo.useLegacyPackaging=true` in `android/gradle.properties` (the same setting as `expo-build-properties`' `android.useLegacyPackaging`, so don't set that one to `false`). It does not set `android:extractNativeLibs` in the manifest, because the Android Gradle Plugin used by Expo SDK 58 fails the build on it. If you're still not seeing crashes:
 
 - Use a **`google_apis`** emulator image (not `google_apis_playstore`). The Play Store emulator images have restrictions that prevent Crashpad's handler process from executing.
 - Alternatively, test on a **physical Android device** where this is not an issue.
