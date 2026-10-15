@@ -1,10 +1,12 @@
 import 'expo-blob';
+import { File as ExpoFile } from 'expo-file-system';
 import { fetch as expoFetch } from 'expo/fetch';
 import {
   type BugSplat,
   init as initReact,
 } from '@bugsplat/react';
 import type {
+  BugSplatAttachment,
   BugSplatFeedbackOptions,
   BugSplatFeedbackResult,
   BugSplatInitOptions,
@@ -29,6 +31,51 @@ function applyDefaults(client: BugSplat, options?: BugSplatInitOptions): void {
   if (Object.keys(jsAttributes).length > 0) {
     client.setDefaultAttributes(jsAttributes);
   }
+}
+
+type FormDataBytesPart = {
+  name: string;
+  type: string;
+  bytes: () => Promise<Uint8Array>;
+};
+
+/**
+ * Converts an attachment into the part shape expo/fetch's multipart encoder
+ * reads: `bytes()` for the body, `name` for the `filename=` and `type` for the
+ * part's content type. A global `Blob` is already encoded correctly and passes
+ * through unchanged.
+ */
+function toExpoFetchAttachment(attachment: BugSplatAttachment): BugSplatAttachment {
+  const { filename, data } = attachment;
+  if (data instanceof Blob) {
+    return attachment;
+  }
+
+  let part: FormDataBytesPart;
+  if (data instanceof Uint8Array) {
+    part = { name: filename, type: 'application/octet-stream', bytes: async () => data };
+  } else if ('uri' in data) {
+    part = {
+      name: filename,
+      type: data.type ?? 'application/octet-stream',
+      bytes: () => new ExpoFile(data.uri).bytes(),
+    };
+  } else {
+    const blobLike = data as { type?: string; bytes: () => Promise<Uint8Array> };
+    part = {
+      name: filename,
+      type: blobLike.type || 'application/octet-stream',
+      bytes: () => blobLike.bytes(),
+    };
+  }
+  return { filename, data: part as unknown as BugSplatAttachment['data'] };
+}
+
+function withExpoFetchAttachments<T extends BugSplatPostOptions | undefined>(options: T): T {
+  if (!options?.attachments) {
+    return options;
+  }
+  return { ...options, attachments: options.attachments.map(toExpoFetchAttachment) };
 }
 
 /**
@@ -86,7 +133,7 @@ export async function post(
 
   const err = error instanceof Error ? error : new Error(error);
   try {
-    const result = await jsClient.post(err, options);
+    const result = await jsClient.post(err, withExpoFetchAttachments(options));
     if (result.error) {
       return { success: false, error: result.error.message };
     }
@@ -113,7 +160,7 @@ export async function postFeedback(
   }
 
   try {
-    const result = await jsClient.postFeedback(title, options);
+    const result = await jsClient.postFeedback(title, withExpoFetchAttachments(options));
     if (result.error) {
       return { success: false, error: result.error.message };
     }
