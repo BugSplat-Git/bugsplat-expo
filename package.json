@@ -11,7 +11,7 @@
     "lint": "expo-module lint",
     "test": "jest",
     "prepare": "expo-module prepare",
-    "prepublishOnly": "expo-module prepublishOnly",
+    "prepublishOnly": "expo-module prepublishOnly && npm run build:plugin && node scripts/check-publish-output.js",
     "expo-module": "expo-module",
     "open:ios": "xed example/ios",
     "open:android": "open -a \"Android Studio\" example/android"

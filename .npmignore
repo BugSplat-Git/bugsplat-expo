@@ -17,3 +17,6 @@ __tests__
 
 # TypeScript incremental build info
 .tsbuildinfo
+
+/android/.gradle/
+/scripts/
