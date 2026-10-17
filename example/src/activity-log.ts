@@ -1,7 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type ActivityType = 'crash' | 'error' | 'feedback' | 'hang';
-const ACTIVITY_TYPES: ReadonlySet<ActivityType> = new Set(['crash', 'error', 'feedback', 'hang']);
+export type ActivityType = 'crash' | 'error' | 'crashWithCause' | 'feedback' | 'hang';
+const ACTIVITY_TYPES: ReadonlySet<ActivityType> = new Set([
+  'crash',
+  'error',
+  'crashWithCause',
+  'feedback',
+  'hang',
+]);
 
 export interface ActivityEntry {
   type: ActivityType;
@@ -10,7 +16,7 @@ export interface ActivityEntry {
 }
 
 const STORAGE_KEY = 'bugsplat_example_activity';
-// Keeps the recent activity card from overflowing the screen below the four
+// Keeps the recent activity card from overflowing the screen below the five
 // event cards. Smaller than bugsplat-android's cap of 3 because Expo's layout
 // uses slightly more vertical space (safe-area + card min-height overhead).
 const MAX_ENTRIES = 2;

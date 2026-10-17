@@ -16,6 +16,7 @@ export const COLORS = {
   connectedDot: '#22C55E',
   activityCrash: '#1F73E8',
   activityError: '#E5B142',
+  activityCrashWithCause: '#E5B142',
   activityFeedback: '#22C55E',
   activityHang: '#E5B142',
 
