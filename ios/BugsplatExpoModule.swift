@@ -84,6 +84,9 @@ public class BugsplatExpoModule: Module {
 
       bs.start()
     }
+    // BugSplat-Apple's start() records the calling thread as the main thread for hang
+    // reports, so it must run on main rather than Expo's background function queue.
+    .runOnQueue(.main)
 
     Function("setUser") { (name: String, email: String) in
       self.userName = name
