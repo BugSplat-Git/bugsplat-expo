@@ -95,6 +95,12 @@ const CARDS: Array<{
     subtitle: 'Exception caught · app keeps running',
   },
   {
+    key: 'crashWithCause',
+    icon: require('./assets/splat_error.png'),
+    title: 'Crash with cause',
+    subtitle: 'Error.cause chain · SyntaxError wrapped in a higher-level error',
+  },
+  {
     key: 'feedback',
     icon: require('./assets/splat_feedback.png'),
     title: 'User Feedback',
@@ -114,6 +120,7 @@ function activityDotColor(type: ActivityType): string {
   switch (type) {
     case 'crash': return COLORS.activityCrash;
     case 'error': return COLORS.activityError;
+    case 'crashWithCause': return COLORS.activityCrashWithCause;
     case 'feedback': return COLORS.activityFeedback;
     case 'hang': return COLORS.activityHang;
   }
@@ -123,8 +130,20 @@ function activityLabel(type: ActivityType): string {
   switch (type) {
     case 'crash': return 'Crash';
     case 'error': return 'Error';
+    case 'crashWithCause': return 'Crash with cause';
     case 'feedback': return 'Feedback';
     case 'hang': return 'Hang';
+  }
+}
+
+// Throws an Error whose `cause` is the real SyntaxError JSON.parse produced,
+// so the posted report carries a two-link cause chain, each with its own
+// stack. BugSplat renders the inner error as a "Caused by:" row.
+function loadUserSettings() {
+  try {
+    JSON.parse('{ not valid json');
+  } catch (error) {
+    throw new Error('Failed to load user settings', { cause: error });
   }
 }
 
@@ -195,6 +214,19 @@ export default function App() {
     }
   }, [refreshActivity]);
 
+  const onCrashWithCause = useCallback(async () => {
+    try {
+      loadUserSettings();
+    } catch (e) {
+      const causeName =
+        e instanceof Error && e.cause instanceof Error ? e.cause.constructor.name : 'unknown';
+      await recordActivity('crashWithCause', `Error caused by ${causeName}`);
+      await refreshActivity();
+      setStatusText(`Caught: Error (cause: ${causeName}) — app still running`);
+      if (e instanceof Error) post(e).catch(() => {});
+    }
+  }, [refreshActivity]);
+
   const onHang = useCallback(async () => {
     const fire = async () => {
       // Persist BEFORE triggering the hang so the entry survives ANR-kill / force-quit.
@@ -261,6 +293,7 @@ export default function App() {
   const handlers: Record<ActivityType, () => void | Promise<void>> = {
     crash: onCrash,
     error: onError,
+    crashWithCause: onCrashWithCause,
     feedback: onFeedback,
     hang: onHang,
   };
